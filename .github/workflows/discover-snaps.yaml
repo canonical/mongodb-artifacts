@@ -18,7 +18,7 @@ jobs:
       - id: discover
         run: |
           snaps=$(
-            find mongodb/snaps -mindepth 2 -maxdepth 2 -path '*/snap/snapcraft.yaml' \
+            find mongodb/snaps -path '*/snap/snapcraft.yaml' \
               | sed 's#/snap/snapcraft.yaml##' \
               | jq -R '{path: ., name: (split("/")[-1])}' \
               | jq -cs .
