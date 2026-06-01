@@ -98,7 +98,8 @@ parts:
       - percona-server-mongodb
     override-prime: |
       mkdir -p $CRAFT_PRIME/licenses
-      zcat $CRAFT_STAGE/usr/share/doc/percona-server-mongodb/LICENSE-Community.txt.gz \
+      LICENSE_LOC=usr/share/doc/percona-server-mongodb
+      zcat $CRAFT_STAGE/$LICENSE_LOC/LICENSE-Community.txt.gz \
         > $CRAFT_PRIME/licenses/LICENSE-percona-server
     prime:
       - licenses/LICENSE-percona-server

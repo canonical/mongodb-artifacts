@@ -61,4 +61,3 @@ def test_remove():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     subprocess.run(f"sudo snap remove --purge {snapcraft['name']}".split())
-

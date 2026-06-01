@@ -53,6 +53,7 @@ jobs:
           merge-multiple: true
 
       - name: Smoke Tests
+        working-directory: ${{ matrix.snap.path }}
         run: tox run -e smoke
 
     permissions:
