@@ -1,0 +1,28 @@
+name: Discover snaps
+
+on:
+  workflow_call:
+
+jobs:
+  discover-snaps:
+    runs-on: ubuntu-latest
+    outputs:
+      snaps: ${{ steps.discover.outputs.snaps }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: discover
+        run: |
+          snaps=$(
+            find mongodb/snaps -mindepth 2 -maxdepth 2 -path '*/snap/snapcraft.yaml' \
+              | sed 's#/snap/snapcraft.yaml##' \
+              | jq -R '{path: ., name: (split("/")[-1])}' \
+              | jq -cs .
+          )
+
+          echo "snaps=$snaps" >> "$GITHUB_OUTPUT"
+
+outputs:
+  snaps:
+    description: "Discovered snap path/name list"
+    value: ${{ needs.discover-snaps.outputs.snaps }}

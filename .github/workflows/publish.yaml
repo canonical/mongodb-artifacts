@@ -1,0 +1,51 @@
+name: Publish
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - "[0-9]/[a-z]+"
+      - "8-transition/[a-z]+"
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  discover-snaps:
+    uses: ./.github/workflows/discover-snaps.yaml
+
+  build:
+    name: Build snap | ${{ matrix.snap.name }}
+    needs: discover-snaps
+    strategy:
+      fail-fast: false
+      matrix:
+        snap: ${{ fromJSON(needs.discover-snaps.outputs.snaps) }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_snap.yaml@v41.0.0
+    with:
+      path-to-snap-project-directory: ${{ matrix.snap.path }}
+      artifact-prefix: packed-snap-${{ matrix.snap.name }}
+    permissions:
+      actions: read
+      contents: read
+
+  publish:
+    name: Publish Snap | ${{ matrix.snap.name }}
+    needs:
+      - discover-snaps
+      - build
+    strategy:
+      fail-fast: false
+      matrix:
+        snap: ${{ fromJSON(needs.discover-snaps.outputs.snaps) }}
+    uses: canonical/data-platform-workflows/.github/workflows/release_snap.yaml@v41.0.0
+    with:
+      channel: 8-24.04/edge
+      artifact-prefix: packed-snap-${{ matrix.snap.name }}
+    secrets:
+      snap-store-token: ${{ secrets.STORE_LOGIN }}
+    permissions:
+      actions: read
+      contents: write
