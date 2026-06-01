@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installation hook for sharded-mongodb snap
+# Installation hook for mongodb-server-sharded snap
 
 set -eux
 

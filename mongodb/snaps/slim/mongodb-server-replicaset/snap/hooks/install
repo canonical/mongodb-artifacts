@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installation hook for mongodb snap
+# Installation hook for mongodb-server-replicaset snap
 
 set -eux
 

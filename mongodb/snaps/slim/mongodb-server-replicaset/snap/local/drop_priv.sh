@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wrapper script for mongodb applications to be run with restricted privileges
+# Wrapper script for mongodb-server-replicaset applications to be run with restricted privileges
 
 pushd "${SNAP}" > /dev/null
 
