@@ -2,6 +2,10 @@ name: Discover snaps
 
 on:
   workflow_call:
+    outputs:
+      snaps:
+        description: "Discovered snap path/name list"
+        value: ${{ jobs.discover-snaps.outputs.snaps }}
 
 jobs:
   discover-snaps:
@@ -21,8 +25,3 @@ jobs:
           )
 
           echo "snaps=$snaps" >> "$GITHUB_OUTPUT"
-
-outputs:
-  snaps:
-    description: "Discovered snap path/name list"
-    value: ${{ needs.discover-snaps.outputs.snaps }}
