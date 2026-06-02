@@ -40,13 +40,13 @@ jobs:
       fail-fast: false
       matrix:
         snap: ${{ fromJSON(needs.discover-snaps.outputs.snaps) }}
-    uses: canonical/data-platform-workflows/.github/workflows/release_snap.yaml@v49.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/release_snap_edge.yaml@v49.0.2
     with:
-      channel: 8/edge
+      track: 8
       path-to-snap-project-directory: ${{ matrix.snap.path }}
       artifact-prefix: packed-snap-${{ matrix.snap.name }}
     secrets:
-      snap-store-token: ${{ secrets.STORE_LOGIN }}
+      snap-store-token: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
-      actions: read
-      contents: write
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: write  # Needed to create git tags
