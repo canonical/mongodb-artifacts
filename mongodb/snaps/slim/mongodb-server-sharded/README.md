@@ -41,7 +41,8 @@ Copy the same keyfile to all machines participating in the cluster.
 For snap deployments, place the keyfile in a location accessible to the snap, for example:
 
 ```bash
-sudo cp mongodb-keyfile /var/snap/mongodb-server-sharded/common/mongodb-keyfile
+sudo cp mongodb-keyfile /var/snap/mongodb-server-sharded/common/
+sudo chown 584788:root /var/snap/mongodb-server-sharded/common/mongodb-keyfile
 sudo chmod 400 /var/snap/mongodb-server-sharded/common/mongodb-keyfile
 ```
 
@@ -70,6 +71,47 @@ snap services mongodb-server-sharded
 ```
 
 You should see both `mongodb-server-sharded.mongod` and `mongodb-server-sharded.mongos` listed.
+
+### Initialize the config server replica set
+
+Connect to the config server instance
+
+```bash
+snap run mongodb-server-sharded.mongosh --port 27019
+```
+
+Initialize the replica set
+
+```javascript
+rs.initiate({
+  _id: "configrs",
+  configsvr: true,
+  members: [
+    { _id: 0, host: "<CONFIG_IP>:27019" }
+  ]
+})
+```
+
+Verify that the replica set has elected a primary:
+
+```javascript
+rs.status()
+```
+
+### Create an admin user
+
+When using a keyfile, authorization is enabled. Create an admin user before running cluster administration commands:
+
+```javascript
+use admin
+
+db.createUser({
+  user: "admin",
+  pwd: "<ADMIN_PASSWORD>",
+  roles: [
+    { role: "root", db: "admin" }
+  ]
+})
 
 ### Configure shard servers
 
@@ -116,10 +158,10 @@ rs.status()
 
 ### Add the shard to the cluster
 
-Connect to the query router (`mongos`):
+Connect to the query router (`mongos`) using the admin user:
 
 ```bash
-snap run mongodb-server-sharded.mongosh --port 27018
+snap run mongodb-server-sharded.mongosh "mongodb://admin:<ADMIN_PASSWORD>@127.0.0.1:27018/admin"
 ```
 
 Add the shard replica set to the cluster:
@@ -128,10 +170,21 @@ Add the shard replica set to the cluster:
 sh.addShard("shard1rs/<SHARD_MACHINE_IP>:27020")
 ```
 
-Example:
+You should see
 
 ```javascript
-sh.addShard("shard1rs/10.0.0.25:27020")
+{
+  shardAdded: 'shard1rs',
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1780386971, i: 18 }),
+    signature: {
+      hash: Binary.createFromBase64('5iVqusjnRn483j8ppWPLve0DLQ4=', 0),
+      keyId: Long('7646701044415594519')
+    }
+  },
+  operationTime: Timestamp({ t: 1780386971, i: 18 })
+}
 ```
 
 ### Verify the cluster configuration
@@ -144,6 +197,48 @@ sh.status()
 
 The output should show the newly added shard replica set.
 
+### Shard the test collection
+
+Create the required shard-key index:
+
+```javascript
+use testdb
+db.test.createIndex({ _id: "hashed" })
+```
+
+Shard the collection:
+
+```javascript
+sh.shardCollection("testdb.test", { _id: "hashed" })
+```
+
+Verify shard distribution:
+
+```javascript
+db.test.getShardDistribution()
+```
+
+Add documents to the collection:
+
+```javascript
+for (let i = 0; i < 1000; i++) {
+  db.test.insertOne({ value: i })
+}
+```
+
+Check the number of documents:
+
+```javascript
+db.test.countDocuments()
+```
+
+Check the distribution:
+
+```javascript
+db.test.getShardDistribution()
+```
+
+The output should show the data is stored in `shard1rs`
 
 ## Available snap apps
 The snap includes the following command-line tools:
