@@ -1,0 +1,50 @@
+name: Publish rocksto GHCR
+
+env:
+  RELEASE: edge
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - 8-24.04
+  workflow_dispatch:
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+  build:
+    name: Build rock | ${{ matrix.rock.name }}
+    needs: discover-rocks
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_rock.yaml@v49.0.2
+    with:
+      path-to-rock-directory: ${{ matrix.rock.path }}
+      artifact-prefix: ${{ matrix.rock.name }}
+    permissions:
+      actions: read # Needed for GitHub API call to get workflow version
+      contents: read
+
+  publish:
+    name: Release rock  | ${{ matrix.rock.name }}
+    needs:
+      - discover-rocks
+      - build
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+    uses: canonical/data-platform-workflows/.github/workflows/release_rock_edge.yaml@v49.0.2
+    with:
+      path-to-rock-directory: ${{ matrix.rock.path }}
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+    permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
+      packages: write  # Needed to publish to GitHub Container Registry
+      contents: write  # Needed to create git tags

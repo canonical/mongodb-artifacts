@@ -1,0 +1,22 @@
+name: Build MongoDB rocks
+
+on:
+  workflow_call:
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+
+  build:
+    name: Build rocks | ${{ matrix.rock.name }}
+    needs: discover-rocks
+    uses: canonical/data-platform-workflows/.github/workflows/build_rock.yaml@v49.0.2
+    strategy:
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+    with:
+      path-to-rock-directory: ${{ matrix.rock.path }}
+      artifact-prefix: ${{ matrix.rock.name }}
+    permissions:
+      actions: read # Needed for GitHub API call to get workflow version
+      contents: read

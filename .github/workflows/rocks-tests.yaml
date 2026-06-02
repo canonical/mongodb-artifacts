@@ -1,0 +1,77 @@
+name: Rock Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+  build:
+    name: Build rock | ${{ matrix.rock.name }}
+    needs: discover-rocks
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_rock.yaml@v49.0.2
+    with:
+      path-to-rock-directory: ${{ matrix.rock.path }}
+      artifact-prefix: ${{ matrix.rock.name }}
+    permissions:
+      actions: read # Needed for GitHub API call to get workflow version
+      contents: read
+
+  integration:
+    name: Test rock | ${{ matrix.rock.name }}
+    runs-on: ubuntu-24.04
+    needs:
+      - discover-rocks
+      - build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install tools
+        run: |
+          sudo snap install yq --classic
+
+      - name: Download built rock
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ matrix.rock.name }}-*
+          path: ${{ matrix.rock.path }}
+          merge-multiple: true
+
+      - name: Import rock into Docker
+        working-directory: ${{ matrix.rock.path }}
+        run: |
+          NAME=$(yq -r '.name' rockcraft.yaml)
+          VERSION=$(yq -r '.version | split("-")[0]' rockcraft.yaml)
+          BASE=$(yq -r '.base | split("@")[1]' rockcraft.yaml)
+          TAG="${VERSION}-${BASE}_edge"
+
+          ROCK_FILE=$(ls *.rock | head -n1)
+
+          cat "$ROCK_FILE" | docker import - "ghcr.io/canonical/${NAME}:${TAG}"
+
+          echo "IMAGE=ghcr.io/canonical/${NAME}:${TAG}" >> "$GITHUB_ENV"
+
+      - name: Smoke test rock
+        run: |
+          docker run --rm "$IMAGE" --help || true
+          docker run --rm "$IMAGE" --version || true
+
+      - name: Run container test
+        run: |
+          docker run --rm "$IMAGE"

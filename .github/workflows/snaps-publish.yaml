@@ -14,7 +14,7 @@ on:
 
 jobs:
   discover-snaps:
-    uses: ./.github/workflows/discover-snaps.yaml
+    uses: ./.github/workflows/snaps-discover.yaml
 
   build:
     name: Build snap | ${{ matrix.snap.name }}
