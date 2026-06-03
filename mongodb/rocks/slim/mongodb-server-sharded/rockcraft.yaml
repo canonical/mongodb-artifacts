@@ -10,10 +10,17 @@ description: |
 license: Apache-2.0 # your application's SPDX license
 services:
   mongod:
-    summary: Start Mongod
+    summary: Start mongod
     override: replace
     startup: enabled
-    command: "/bin/bash /bin/start.sh"
+    command: "/bin/bash /bin/start-mongod.sh"
+  mongos:
+    summary: Start mongos
+    override: replace
+    # mongos is started on demand (e.g. "docker run <image> start mongos"),
+    # so the default container only runs mongod.
+    startup: disabled
+    command: "/bin/bash /bin/start-mongos.sh"
 
 platforms: # The platforms this rock should be built on and run on
   amd64:
@@ -23,14 +30,12 @@ parts:
   mongo-snap:
     plugin: nil
     stage-snaps:
-      - mongodb-server-sharded/8/edge
+      - charmed-mongodb/8/edge
       - yq
     stage-packages:
       - ca-certificates
       - libssh-4
       - libbrotli1
-      - logrotate
-      - libldap-common
   non-root-user:
     plugin: nil
     after: [mongo-snap]
@@ -40,32 +45,30 @@ parts:
     override-prime: |
       craftctl default
 
-      # Give permission and create the required directories
-      mkdir -p $CRAFT_PRIME/data/db
-      chmod 0755 $CRAFT_PRIME/data/db
-      chown -R 584788:584788 $CRAFT_PRIME/data/db
-
       conf="etc/mongod"
       mongo_config_file="${conf}/mongod.conf"
       mongos_config_file="${conf}/mongos.conf"
 
-      mongod_pid_file="${conf}/run/mongod.pid"
-      mongos_pid_file="${conf}/run/mongos.pid"
-
       mkdir -p $CRAFT_PRIME/$conf
-      mkdir -p $CRAFT_PRIME/$conf/run
       cp $CRAFT_PRIME/etc/mongod.conf "${mongo_config_file}"
       cp $CRAFT_PRIME/etc/mongod.conf "${mongos_config_file}"
 
+      # The per-service configs above replace the base config; drop the
+      # original so it does not ship in the rock.
+      rm -f $CRAFT_PRIME/etc/mongod.conf
+
       yq -i ".processManagement.fork = false" "${mongo_config_file}"
-      yq -i ".processManagement.pidFilePath = \"${mongod_pid_file}\"" "${mongo_config_file}"
 
       yq -i ".processManagement.fork = false" "${mongos_config_file}"
-      yq -i ".processManagement.pidFilePath = \"${mongos_pid_file}\"" "${mongos_config_file}"
       yq -i ".net.port = 27018" "${mongos_config_file}"
       yq -i "del(.storage)" "${mongos_config_file}"
+      yq -i ".systemLog.path = \"/var/log/mongodb/mongos.log\"" "${mongos_config_file}"
 
       chown -R 584788:584788 "${conf}"
+
+      # Data/log dirs are root-owned in the base; services run as uid 584788.
+      chown -R 584788:584788 \
+        "$CRAFT_PRIME/var/lib/mongodb" "$CRAFT_PRIME/var/log/mongodb"
 
       # enable security monitoring
       rocks=usr/share/rocks/
@@ -82,9 +85,9 @@ parts:
       (echo "# os-release" && cat /etc/os-release) > ${rocks}/dpkg-query
       dpkg-query -f "${arr[*]}" -W >> ${rocks}/dpkg.query
 
-      # for snap packages
-      cp snap.mongodb-server-sharded/manifest.yaml ${rocks}
-      cp snap.mongodb-server-sharded/snapcraft.yaml ${rocks}
+      # for snap packages # TO CHANGE TO USE mongodb-server-sharded snap
+      cp snap.charmed-mongodb/manifest.yaml ${rocks}
+      cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
 
   rock-license:
     plugin: dump
@@ -97,10 +100,8 @@ parts:
     plugin: dump
     source: scripts
     organize:
-      start.sh: bin/start.sh
       start-mongod.sh: bin/start-mongod.sh
       start-mongos.sh: bin/start-mongos.sh
     stage:
-      - bin/start.sh
       - bin/start-mongod.sh
       - bin/start-mongos.sh
