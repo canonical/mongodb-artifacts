@@ -19,7 +19,7 @@ jobs:
         run: |
           rocks=$(
             find mongodb/rocks -path '*/rocks/*/rockcraft.yaml' \
-              | sed 's#/rock/rockcraft.yaml##' \
+              | sed 's#/rockcraft.yaml##' \
               | jq -R '{path: ., name: (split("/")[-1])}' \
               | jq -cs .
           )
