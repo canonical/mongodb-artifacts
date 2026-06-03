@@ -1,4 +1,4 @@
-name: Smap smoke tests
+name: Snap smoke tests
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -22,8 +22,10 @@ fi
 
 # MongoDB requires the keyfile to be owned by the user running the daemon
 # (snap_daemon, uid 584788) and readable only by that owner.
-chown 584788:root "${TMPFILE}"
+#
+# Set the mode before changing ownership: while we still own the file we can
 chmod 400 "${TMPFILE}"
+chown 584788:root "${TMPFILE}"
 
 # Atomically move the validated keyfile into place.
 mv "${TMPFILE}" "${KEYFILE}"
