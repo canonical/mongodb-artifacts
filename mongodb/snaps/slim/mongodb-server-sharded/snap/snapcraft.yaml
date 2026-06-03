@@ -55,6 +55,10 @@ slots:
         - $SNAP_COMMON/var/log/mongos
 
 apps:
+  generate-keyfile:
+    command: generate-keyfile.sh
+  store-keyfile:
+    command: store-keyfile.sh
   mongosh:
     command: drop_priv.sh mongosh
     plugs:
@@ -119,6 +123,7 @@ parts:
       - percona-server-mongodb
       - mongodb-shell
       - util-linux
+      - openssl
     stage-snaps:
       - yq
     override-prime: |

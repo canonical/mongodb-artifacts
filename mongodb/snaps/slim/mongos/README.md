@@ -3,39 +3,63 @@
 
 This repository contains the packaging metadata for creating a snap of Mongos built from the official Percona Debian repositories. Mongos is the MongoDB sharded cluster query router.
 
-This snap includes only the `mongos` query router for a sharded deployment. For the full sharded cluster, see the [`mongodb-server-sharded`](https://snapcraft.io/mongodb-server-sharded) snap as a complement. For a replica set deployment instead, see the [`mongodb-server-replicaset`](https://snapcraft.io/mongodb-server-replicaset) snap.
+This snap installs only the `mongos` query router. For a complete sharded cluster deployment, use the [`mongodb-server-sharded`](https://snapcraft.io/mongodb-server-sharded) snap. For replica set deployments, use the [`mongodb-server-replicaset`](https://snapcraft.io/mongodb-server-replicaset) snap.
 
 ## Installing the snap
 The snap can be installed directly from the Snap Store.
 
 [![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/mongos)
 
-or 
+or:
 
 ```bash
 sudo snap install mongos --channel=8/edge
 ```
 
-## Using mongos snap
-Before starting the service, configure the query router to connect to your config server replica set.
+## Using the snap
+
+### Overview
+`mongos` is the MongoDB query router for sharded clusters. It connects client requests to
+the config server replica set and routes operations to shards.
+
+### Internal authentication keyfile
+
+`mongos` requires the same shared keyfile used by the other sharded cluster components.
+
+Store the keyfile by piping it into the helper app. This must be run with `sudo` so the snap can assign the correct owner and permissions:
 
 ```bash
-sudo snap set mongos mongos-args="--configdb configrs/127.0.0.1:27019 --bind_ip 127.0.0.1 --port 27018"
+sudo snap run mongos.store-keyfile < /path/to/keyfile
 ```
 
-Start the service:
+The keyfile is stored securely at `/var/snap/mongos/common/mongodb-keyfile`.
+
+> ⚠️ If you do not have a keyfile yet, generate one on another cluster component first, then distribute it to all machines. All components must share the same keyfile for internal authentication to work. Make sure you delete the plaintext copy used on the `store-keyfile` command.
+
+### Configure `mongos`
+Set the `mongos` runtime arguments using `snap set`:
+
+```bash
+sudo snap set mongos mongos-args="--configdb configrs/<CONFIG_SERVER_IP>:27019 --bind_ip 127.0.0.1 --port 27018 --keyFile /var/snap/mongos/common/mongodb-keyfile"
+```
+
+Replace `configrs/<CONFIG_SERVER_IP>:27019` with your actual config server replica set name and members.
+
+### Start the service
 
 ```bash
 sudo snap start mongos.mongos
 ```
 
-## Check service status
+### Check service status
+
 ```bash
 snap services mongos
 ```
 
-You should see:
-```
+You should see output similar to:
+
+```text
 Service         Startup   Current  Notes
 mongos.mongos   disabled  active   -
 ```
@@ -60,8 +84,9 @@ snap run mongos.mongosh --port 27018
 
 ## Getting command help
 To see more information about a service or app, run it with `--help`. For example:
+
 ```bash
-sudo snap run mongodb-server-sharded.mongos --help
+sudo snap run mongos.mongosh --help
 ```
 
 You can use this pattern for any of the included apps.
@@ -69,11 +94,18 @@ You can use this pattern for any of the included apps.
 ## Logs
 Logs are stored in:
 
-- `/var/snap/mongodb/common/var/log/mongodb/mongos.log`
+- `/var/snap/mongos/common/var/log/mongodb/mongos.log`
+
+## Configuration files
+The snap stores the `mongos` configuration file at:
+
+- `/var/snap/mongos/current/etc/mongod/mongos.conf`
+
+## Contributing
+Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
 
 ## License
-The Mongos Snap is free software, distributed under the Apache Software License,
-version 2.0. See [LICENSE](LICENSE) for more information.
+The Mongos Snap is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](LICENSE) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.
