@@ -6,6 +6,28 @@
 # snap_daemon user that runs mongod and mongos.
 set -eu
 
+usage() {
+    cat <<'EOF'
+Usage: mongodb-server-sharded.store-keyfile < KEYFILE
+
+Read a MongoDB internal-authentication keyfile from stdin and store it in the
+snap's common directory with the ownership and permissions MongoDB requires.
+
+Must be run as root (e.g. with sudo) so the keyfile can be handed over to the
+snap_daemon user that runs mongos.
+
+Example:
+  sudo snap run mongodb-server-sharded.store-keyfile < /path/to/keyfile
+EOF
+}
+
+case "${1:-}" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+esac
+
 umask 077
 
 KEYFILE="${SNAP_COMMON}/mongodb-keyfile"
