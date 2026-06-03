@@ -1,3 +1,5 @@
+import base64
+import os
 import yaml
 import subprocess
 import time
@@ -12,6 +14,40 @@ def test_install():
             f"sudo snap install ./{snapcraft['name']}_{snapcraft['version']}_amd64.snap --dangerous".split(),
             check=True,
         )
+
+@pytest.mark.run(after="test_install")
+def test_store_keyfile():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
+
+    # Build a representative keyfile (756 random bytes, base64-encoded).
+    content = base64.b64encode(os.urandom(756))
+
+    subprocess.run(
+        f"sudo snap run {name}.store-keyfile".split(),
+        check=True,
+        input=content,
+    )
+
+    stat = subprocess.run(
+        ["sudo", "stat", "-c", "%a %u", keyfile],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    mode, uid = stat.stdout.split()
+    assert mode == "400", f"unexpected keyfile mode: {mode}"
+    assert uid == "584788", f"unexpected keyfile owner uid: {uid}"
+
+    # The stored content must match what was provided on stdin.
+    stored = subprocess.run(
+        ["sudo", "cat", keyfile],
+        check=True,
+        capture_output=True,
+    )
+    assert stored.stdout == content, "stored keyfile content differs"
 
 
 @pytest.mark.run(after="test_install")
