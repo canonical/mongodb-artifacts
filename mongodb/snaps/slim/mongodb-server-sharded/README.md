@@ -35,6 +35,16 @@ is therefore spread across several machines:
 Make sure the machines can reach each other over the MongoDB ports they are
 configured to use.
 
+The example below sets up a minimal sharded cluster with one config server, one
+query router, and one shard. The table summarizes the roles, ports, and other
+details used throughout this guide:
+
+| Component         | Service  | Snap argument | Role flag     | Replica set | Port    | Bind IP     |
+|-------------------|----------|---------------|---------------|-------------|---------|-------------|
+| Config server     | `mongod` | `mongod-args` | `--configsvr` | `configrs`  | `27019` | `127.0.0.1` |
+| Query router      | `mongos` | `mongos-args` | _n/a_         | _n/a_       | `27018` | `127.0.0.1` |
+| Shard server      | `mongod` | `mongod-args` | `--shardsvr`  | `shard1rs`  | `27020` | `0.0.0.0`   |
+
 ### Configure internal authentication
 
 MongoDB sharded clusters use a shared keyfile for internal authentication between config servers,

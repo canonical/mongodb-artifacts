@@ -51,49 +51,75 @@ def test_store_keyfile():
     assert stored.stdout == content, "stored keyfile content differs"
 
 
-@pytest.mark.run(after="test_install")
+@pytest.mark.run(after="test_store_keyfile")
 def test_all_apps():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
 
-        override = {}
-
-        skip = []
-
         for app, data in snapcraft["apps"].items():
-            if not bool(data.get("daemon")) and app not in skip:
+            if not data.get("daemon"):
                 print(f"Testing {snapcraft['name']}.{app}....")
                 subprocess.run(
-                    f"{snapcraft['name']}.{app} {override.get(app, '--help')}".split(),
+                    f"{snapcraft['name']}.{app} --help".split(),
                     check=True,
                 )
 
 
-@pytest.mark.run(after="test_install")
-def test_all_services():
+def _current_status(name, app):
+    """Return the 'Current' column from `snap services <name>.<app>`.
+
+    The output looks like:
+
+        Service                        Startup   Current   Notes
+        mongodb-server-sharded.mongod  disabled  active    -
+
+    so the status is the third whitespace-separated field of the data row.
+    """
+    result = subprocess.run(
+        f"snap services {name}.{app}".split(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    print(result.stdout)
+    for line in result.stdout.strip().splitlines()[1:]:
+        fields = line.split()
+        if fields and fields[0] == f"{name}.{app}":
+            return fields[2]
+    raise AssertionError(f"{name}.{app} not found in:\n{result.stdout}")
+
+
+@pytest.mark.run(after="test_all_apps")
+def test_mongos_service():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
 
-        skip = []
+    subprocess.run(
+        [
+            "sudo",
+            "snap",
+            "set",
+            name,
+            f"mongos-args=--configdb configrs/127.0.0.1:27019 "
+            f"--bind_ip 127.0.0.1 --port 27018 --keyFile {keyfile}",
+        ],
+        check=True,
+    )
 
-        for app, data in snapcraft["apps"].items():
-            if bool(data.get("daemon")) and app not in skip:
-                print(f"\nTesting {snapcraft['name']}.{app} service....")
-                subprocess.run(
-                    f"sudo snap start {snapcraft['name']}.{app}".split(), check=True
-                )
-                time.sleep(5)
-                service = subprocess.run(
-                    f"snap services {snapcraft['name']}.{app}".split(),
-                    check=True,
-                    capture_output=True,
-                )
-                subprocess.run(f"sudo snap stop {snapcraft['name']}.{app}".split())
-
-                assert "active" in str(service.stdout)
+    app = "mongos"
+    try:
+        print(f"\nTesting {name}.{app} service....")
+        subprocess.run(f"sudo snap start {name}.{app}".split(), check=True)
+        time.sleep(5)
+        status = _current_status(name, app)
+        assert status == "active", f"{name}.{app} is {status!r}, expected 'active'"
+    finally:
+        subprocess.run(f"sudo snap stop {name}.{app}".split())
 
 
-@pytest.mark.run(after="test_all_services")
+@pytest.mark.run(after="test_mongos_service")
 def test_remove():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
