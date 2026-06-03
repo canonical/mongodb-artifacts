@@ -15,6 +15,7 @@ def test_install():
             check=True,
         )
 
+
 @pytest.mark.run(after="test_install")
 def test_store_keyfile():
     with open("snap/snapcraft.yaml") as file:
