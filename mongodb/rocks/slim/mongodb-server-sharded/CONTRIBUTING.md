@@ -14,5 +14,37 @@ cd mongodb-artifacts/mongodb/rocks/slim/mongodb-server-sharded
 
 ## Packing the rock
 ```bash
-rockfraft pack
+rockcraft pack
 ```
+
+## Run lint
+```bash
+tox -e lint
+```
+
+## Testing
+
+The integration tests are [spread](https://github.com/canonical/spread) tasks
+that exercise the rock through Docker. `rockcraft test` packs the rock, loads it
+into Docker, and runs every task under `spread/tests/`.
+
+Run all tests:
+```bash
+rockcraft test
+```
+
+Run a single suite (for example only the smoke task):
+```bash
+rockcraft test craft:ubuntu-24.04:spread/tests/smoke
+```
+
+The suites are:
+
+- `spread/tests/smoke` — fast checks: mongod starts and accepts connections,
+  `generate-keyfile` works, and the config / PID-file paths are correct.
+- `spread/tests/cluster` — a full sharded cluster (config server, shard, and
+  query router) with keyfile authentication, ending in a write and read through
+  `mongos`.
+
+Each task manages its own containers and cleans them up in its `restore`
+section, so they do not interfere with any cluster you run by hand.

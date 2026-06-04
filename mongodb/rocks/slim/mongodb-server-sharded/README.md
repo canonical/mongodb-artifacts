@@ -13,7 +13,7 @@ For standalone mongos, see [`mongos`]
 
 ## How the rock is structured
 
-The rock uses [Pebble](https://documentation.ubuntu.com/pebble/) as its entrypoint and defines two services:
+The rock defines two services:
 
 | Service  | Startup    | Command                          | Default port |
 | -------- | ---------- | -------------------------------- | ------------ |
@@ -22,10 +22,10 @@ The rock uses [Pebble](https://documentation.ubuntu.com/pebble/) as its entrypoi
 
 Because a single container hosts a single role, the `mongod` service starts automatically while `mongos` is started on demand:
 
-- A **default** container (no extra arguments) runs `mongod`. Use it for config servers and shard servers.
+- A default container runs `mongod`. Use it for config servers and shard servers.
 - A container started with `start mongos` runs only the query router.
 
-Both services run as the unprivileged `mongodb` user (uid `584788`) and read the configuration files baked into the image:
+Both services run as the unprivileged `mongodb` user (uid `584788`) and read the configuration files found into the image:
 
 - `mongod` &rarr; `/etc/mongod/mongod.conf` (data in `/var/lib/mongodb`)
 - `mongos` &rarr; `/etc/mongod/mongos.conf`
@@ -38,14 +38,6 @@ To get started with the rock, first install Docker:
 
 ```bash
 sudo snap install docker
-sudo addgroup --system docker
-sudo usermod -aG docker $USER
-```
-
-Then log out and back in, or apply the group change immediately with:
-
-```bash
-newgrp docker
 ```
 
 ## Obtaining the rock
@@ -70,31 +62,6 @@ The rest of this guide refers to the image through the `IMAGE` shell variable, s
 export IMAGE=ghcr.io/canonical/mongodb-server-sharded:8_edge
 ```
 
-## Quick start: a standalone `mongod`
-
-Run the default container to start a standalone `mongod` and connect to it:
-
-```bash
-docker run -d --name mongo -v mongo-data:/var/lib/mongodb "$IMAGE"
-docker exec -it mongo mongosh
-```
-
-Inside the shell, `show dbs` lists the available databases:
-
-```javascript
-show dbs
-```
-
-```text
-admin   0.000GB
-config  0.000GB
-local   0.000GB
-```
-
-When you are done, enter `exit` to return to your terminal, and remove the container with `docker rm -f mongo`.
-
-> The standalone container binds to `127.0.0.1` only, so it is reachable from inside the container (via `docker exec`) but not from other containers. The sharded cluster below uses `--bind_ip_all` to make each component reachable over a Docker network.
-
 ## Using the rock as a sharded cluster
 
 The following walkthrough builds a minimal sharded cluster on a single host using one config server, one shard, and one query router, all on a dedicated Docker network. In production, run each component on a separate host and use multi-member replica sets.
@@ -111,15 +78,19 @@ docker network create mongo-cluster
 
 MongoDB sharded clusters use a shared keyfile for internal authentication between config servers, shard servers, and query routers (`mongos`).
 
-Generate a keyfile and restrict its permissions so that only the `mongodb` user (uid `584788`) can read it:
+On the host machine, generate a keyfile using the image's `generate-keyfile` command, then restrict its permissions so that only the `mongodb` user (uid `584788`) can read it:
 
 ```bash
-openssl rand -base64 756 > mongodb-keyfile
+docker run --rm "$IMAGE" exec generate-keyfile > mongodb-keyfile
 chmod 400 mongodb-keyfile
 sudo chown 584788:584788 mongodb-keyfile
 ```
 
-The same keyfile is mounted read-only into every container in the cluster, at `/etc/mongod/keyfile`.
+`generate-keyfile` writes a fresh random key to standard output, which is redirected into `mongodb-keyfile` on the host.
+
+The same keyfile will be mounted read-only into every container in the cluster, at `/etc/mongod/keyfile`.
+
+> **Note:** Run all of the `docker run` commands below from the same directory where you created `mongodb-keyfile`, otherwise `$(pwd)` won't point at the file. The keyfile is bind-mounted from the host, not copied into the containers, so it must remain on the host for the lifetime of the cluster — do not delete it, or containers will fail to start when restarted.
 
 ### Start the config server
 
@@ -177,8 +148,6 @@ db.createUser({
 })
 ```
 
-Enter `exit` to leave the shell.
-
 ### Start a shard server
 
 Start another `mongod` container as a shard server, using the same keyfile. It joins the `shard1rs` replica set and listens on the default port `27017`:
@@ -218,8 +187,6 @@ Verify that the replica set has elected a primary:
 rs.status()
 ```
 
-Enter `exit` to leave the shell.
-
 ### Start the query router
 
 Start a container running only the `mongos` service by passing the `start mongos` subcommand to Pebble. The router points at the config server replica set and listens on port `27018`:
@@ -258,9 +225,7 @@ You should see:
 }
 ```
 
-### Verify the cluster configuration
-
-List the registered shards:
+Verify the cluster configuration:
 
 ```javascript
 sh.status()
@@ -307,12 +272,20 @@ The output should show that the data is stored in `shard1rs`.
 
 ### Tear down
 
-Remove the cluster when you are finished:
+When you are finished, stop the containers gracefully, then remove them:
 
 ```bash
-docker rm -f configsvr shard1 mongos
-docker volume rm configsvr-data shard1-data
+docker stop configsvr shard1 mongos
+docker rm configsvr shard1 mongos
 docker network rm mongo-cluster
+```
+
+Removing the containers does **not** delete their data: the `configsvr-data` and `shard1-data` volumes persist, so you can start fresh containers against the same volumes and recover the data.
+
+To delete the data permanently, remove the volumes as well:
+
+```bash
+docker volume rm configsvr-data shard1-data
 ```
 
 ## Available tools
@@ -358,7 +331,6 @@ View them with `docker exec`, or inspect Pebble's view of the services:
 ```bash
 docker exec configsvr tail -f /var/log/mongodb/mongod.log
 docker exec configsvr pebble services
-docker exec configsvr pebble logs mongod
 ```
 
 ## License

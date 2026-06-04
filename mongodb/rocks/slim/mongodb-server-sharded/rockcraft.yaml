@@ -30,12 +30,15 @@ parts:
   mongo-snap:
     plugin: nil
     stage-snaps:
-      - charmed-mongodb/8/edge
+      - charmed-mongodb/8/edge # TODO: change to mongodb-server-sharded snap when available
       - yq
-    stage-packages:
+    overlay-packages:
       - ca-certificates
+    stage-packages:
       - libssh-4
       - libbrotli1
+      # Provides openssl for the generate-keyfile
+      - openssl
   non-root-user:
     plugin: nil
     after: [mongo-snap]
@@ -50,16 +53,13 @@ parts:
       mongos_config_file="${conf}/mongos.conf"
 
       mkdir -p $CRAFT_PRIME/$conf
-      cp $CRAFT_PRIME/etc/mongod.conf "${mongo_config_file}"
-      cp $CRAFT_PRIME/etc/mongod.conf "${mongos_config_file}"
-
-      # The per-service configs above replace the base config; drop the
-      # original so it does not ship in the rock.
-      rm -f $CRAFT_PRIME/etc/mongod.conf
+      cp $CRAFT_STAGE/etc/mongod.conf "${mongo_config_file}"
+      cp $CRAFT_STAGE/etc/mongod.conf "${mongos_config_file}"
 
       yq -i ".processManagement.fork = false" "${mongo_config_file}"
 
       yq -i ".processManagement.fork = false" "${mongos_config_file}"
+      yq -i ".processManagement.pidFilePath = \"/var/run/mongos.pid\"" "${mongos_config_file}"
       yq -i ".net.port = 27018" "${mongos_config_file}"
       yq -i "del(.storage)" "${mongos_config_file}"
       yq -i ".systemLog.path = \"/var/log/mongodb/mongos.log\"" "${mongos_config_file}"
@@ -69,6 +69,10 @@ parts:
       # Data/log dirs are root-owned in the base; services run as uid 584788.
       chown -R 584788:584788 \
         "$CRAFT_PRIME/var/lib/mongodb" "$CRAFT_PRIME/var/log/mongodb"
+
+      # The PID files are stored in `/var/run`
+      mkdir -p "$CRAFT_PRIME/run"
+      chown 584788:584788 "$CRAFT_PRIME/run"
 
       # enable security monitoring
       rocks=usr/share/rocks/
@@ -85,7 +89,7 @@ parts:
       (echo "# os-release" && cat /etc/os-release) > ${rocks}/dpkg-query
       dpkg-query -f "${arr[*]}" -W >> ${rocks}/dpkg.query
 
-      # for snap packages # TO CHANGE TO USE mongodb-server-sharded snap
+      # for snap packages # TODO: change to mongodb-server-sharded snap when available
       cp snap.charmed-mongodb/manifest.yaml ${rocks}
       cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
 
@@ -102,6 +106,8 @@ parts:
     organize:
       start-mongod.sh: bin/start-mongod.sh
       start-mongos.sh: bin/start-mongos.sh
+      generate-keyfile.sh: bin/generate-keyfile
     stage:
       - bin/start-mongod.sh
       - bin/start-mongos.sh
+      - bin/generate-keyfile

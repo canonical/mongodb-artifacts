@@ -220,3 +220,6 @@ __marimo__/
 # Artifacts
 *.snap
 *.rock
+
+# MongoDB keyfile generated while following the README
+mongodb-keyfile
