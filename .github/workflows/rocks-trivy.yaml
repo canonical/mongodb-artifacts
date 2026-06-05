@@ -1,4 +1,4 @@
-name: Trivy rock security scanner
+name: Rocks Trivy rock security scanner
 on:
   push:
     branches:
@@ -52,14 +52,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: ${{ matrix.rock.name }}-*
-          path: ${{ matrix.rock.path }}
           merge-multiple: true
 
       - name: Import locally
-        working-directory: ${{ matrix.rock.path }}
         run: |
-          NAME=$(yq -r '.name' rockcraft.yaml)
-          ROCK_FILE=$(ls *.rock | head -n1)
+          ROCK_FILE=$(find . -type f -name '*.rock' | head -n1)
+          if [ -z "$ROCK_FILE" ]; then
+            echo 'No .rock package found in workspace'
+            exit 1
+          fi
+
+          NAME=$(yq -r '.name' "${{ matrix.rock.path }}/rockcraft.yaml")
           IMAGE_REF="trivy/${NAME}:test"
 
           sudo rockcraft.skopeo --insecure-policy \

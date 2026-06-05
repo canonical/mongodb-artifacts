@@ -1,9 +1,7 @@
 name: Build MongoDB rocks
 
 on:
-  pull_request:
   workflow_call:
-  workflow_dispatch:
 
 jobs:
   discover-rocks:
