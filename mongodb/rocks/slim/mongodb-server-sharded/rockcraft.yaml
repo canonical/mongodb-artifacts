@@ -30,7 +30,7 @@ parts:
   mongo-snap:
     plugin: nil
     stage-snaps:
-      - charmed-mongodb/8/edge # TODO: change to mongodb-server-sharded snap when available
+      - charmed-mongodb/8/edge # TODO: switch to sharded snap when available
       - yq
     overlay-packages:
       - ca-certificates
@@ -59,11 +59,12 @@ parts:
       yq -i ".processManagement.fork = false" "${mongo_config_file}"
 
       yq -i ".processManagement.fork = false" "${mongos_config_file}"
-      yq -i ".processManagement.pidFilePath = \"/var/run/mongos.pid\"" "${mongos_config_file}"
+      yq -i ".processManagement.pidFilePath = \"/var/run/mongos.pid\"" \
+        "${mongos_config_file}"
       yq -i ".net.port = 27018" "${mongos_config_file}"
       yq -i "del(.storage)" "${mongos_config_file}"
-      yq -i ".systemLog.path = \"/var/log/mongodb/mongos.log\"" "${mongos_config_file}"
-
+      yq -i ".systemLog.path = \"/var/log/mongodb/mongos.log\"" \
+        "${mongos_config_file}"
       chown -R 584788:584788 "${conf}"
 
       # Data/log dirs are root-owned in the base; services run as uid 584788.
@@ -89,7 +90,7 @@ parts:
       (echo "# os-release" && cat /etc/os-release) > ${rocks}/dpkg-query
       dpkg-query -f "${arr[*]}" -W >> ${rocks}/dpkg.query
 
-      # for snap packages # TODO: change to mongodb-server-sharded snap when available
+      # for snap packages; TODO: use mongodb-server-sharded snap when available
       cp snap.charmed-mongodb/manifest.yaml ${rocks}
       cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
 

@@ -14,14 +14,17 @@ jobs:
     uses: ./.github/workflows/rocks-discover.yaml
 
   test:
-    name: Test rock | ${{ matrix.rock.name }}
-    runs-on: ubuntu-24.04
+    name: Test rock | ${{ matrix.rock.name }} | ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     needs: discover-rocks
 
     strategy:
       fail-fast: false
       matrix:
         rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+        runner:
+          - ubuntu-24.04       # amd64
+          - ubuntu-24.04-arm   # arm64
 
     steps:
       - uses: actions/checkout@v6
@@ -42,3 +45,7 @@ jobs:
             exit 1
           fi
           rockcraft test
+
+      - name: Rockcraft logs
+        if: ${{ success() || (failure() && steps.pack.outcome == 'failure') }}
+        run: cat ~/.local/state/rockcraft/log/*
