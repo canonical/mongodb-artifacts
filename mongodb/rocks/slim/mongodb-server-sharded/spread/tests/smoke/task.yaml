@@ -15,9 +15,16 @@ execute: |
   echo "=== Testing mongos binary availability ==="
   docker run --rm "$IMAGE" exec mongos --version | grep -qi mongos
 
-  echo "=== Testing generate-keyfile output ==="
-  bytes="$(docker run --rm "$IMAGE" exec generate-keyfile | base64 -d | wc -c)"
+  echo "=== Testing set-keyfile/get-keyfile round-trip ==="
+  # set-keyfile with no argument rotates (generates) the key; get-keyfile prints
+  # the stored key. A freshly generated key decodes to 756 bytes.
+  bytes="$(docker run --rm "$IMAGE" exec bash -c 'set-keyfile && get-keyfile' \
+    | base64 -d | wc -c)"
   test "$bytes" -eq 756
+
+  # set-keyfile with an argument stores that exact value.
+  stored="$(docker run --rm "$IMAGE" exec bash -c 'set-keyfile myownkey && get-keyfile')"
+  test "$stored" = "myownkey"
 
   # A default container runs mongod, which stays up and accepts connections.
   echo "=== Testing mongod connectivity ==="
@@ -32,6 +39,10 @@ execute: |
     sleep 2
   done
   test "$ok" -eq 1
+
+  echo "=== Testing keyfile is auto-generated with correct ownership/mode ==="
+  perms="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/keyfile)"
+  test "$perms" = "400 584788 584788"
 
   echo "=== Testing mongod service state ==="
   mongod_state="$(docker exec "$CONTAINER" pebble services mongod | awk '$1 == "mongod" {print $3}')"

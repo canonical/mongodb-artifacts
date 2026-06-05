@@ -76,34 +76,31 @@ docker network create mongo-cluster
 
 ### Configure internal authentication
 
-MongoDB sharded clusters use a shared keyfile for internal authentication between config servers, shard servers, and query routers (`mongos`).
+MongoDB sharded clusters use a shared keyfile for internal authentication between config servers, shard servers, and query routers (`mongos`). Every member must use the same keyfile.
 
-On the host machine, generate a keyfile using the image's `generate-keyfile` command, then restrict its permissions so that only the `mongodb` user (uid `584788`) can read it:
+Each container automatically generates a keyfile at `/etc/mongod/keyfile` (mode `400`, owned by the `mongodb` user, uid `584788`) the first time it starts, unless a keyfile is already present at that path.
 
-```bash
-docker run --rm "$IMAGE" exec generate-keyfile > mongodb-keyfile
-chmod 400 mongodb-keyfile
-sudo chown 584788:584788 mongodb-keyfile
-```
-
-`generate-keyfile` writes a fresh random key to standard output, which is redirected into `mongodb-keyfile` on the host.
-
-The same keyfile will be mounted read-only into every container in the cluster, at `/etc/mongod/keyfile`.
-
-> **Note:** Run all of the `docker run` commands below from the same directory where you created `mongodb-keyfile`, otherwise `$(pwd)` won't point at the file. The keyfile is bind-mounted from the host, not copied into the containers, so it must remain on the host for the lifetime of the cluster — do not delete it, or containers will fail to start when restarted.
+In this walkthrough we let the config server generate the key, read it back with `get-keyfile`, and apply it to the shard and the query router with `set-keyfile`. (For an alternative that shares a single keyfile from the host, see [Sharing the keyfile with a bind mount](#sharing-the-keyfile-with-a-bind-mount).)
 
 ### Start the config server
 
-Start a `mongod` container as a config server. It joins the `configrs` replica set, listens on port `27019`, mounts the shared keyfile and a data volume:
+Start a `mongod` container as a config server. It joins the `configrs` replica set, listens on port `27019`, and mounts a data volume. On first start it generates the keyfile that the rest of the cluster will share:
 
 ```bash
 docker run -d \
   --name configsvr \
   --network mongo-cluster \
   -v configsvr-data:/var/lib/mongodb \
-  -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
   -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
   "$IMAGE"
+```
+
+#### Read the generated keyfile
+
+Capture the key the config server just generated into a shell variable, so you can apply it to the other members:
+
+```bash
+KEYFILE_CONTENT="$(docker exec configsvr get-keyfile)"
 ```
 
 #### Initialize the config server replica set
@@ -150,16 +147,22 @@ db.createUser({
 
 ### Start a shard server
 
-Start another `mongod` container as a shard server, using the same keyfile. It joins the `shard1rs` replica set and listens on the default port `27017`:
+Start another `mongod` container as a shard server. It joins the `shard1rs` replica set and listens on the default port `27017`:
 
 ```bash
 docker run -d \
   --name shard1 \
   --network mongo-cluster \
   -v shard1-data:/var/lib/mongodb \
-  -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
   -e MONGOD_ARGS="--shardsvr --replSet shard1rs --port 27017 --bind_ip_all --keyFile /etc/mongod/keyfile" \
   "$IMAGE"
+```
+
+On first start this container generated its *own* keyfile. Replace it with the config server's key and restart so `mongod` reloads it (the keyfile is only read at startup):
+
+```bash
+docker exec shard1 set-keyfile "$KEYFILE_CONTENT"
+docker restart shard1
 ```
 
 #### Initialize the shard replica set
@@ -195,9 +198,15 @@ Start a container running only the `mongos` service by passing the `start mongos
 docker run -d \
   --name mongos \
   --network mongo-cluster \
-  -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
   -e MONGOS_ARGS="--configdb configrs/configsvr:27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
   "$IMAGE" start mongos
+```
+
+Like the shard, this container generated its own keyfile on first start. Apply the shared key and restart so it can authenticate to the config server:
+
+```bash
+docker exec mongos set-keyfile "$KEYFILE_CONTENT"
+docker restart mongos
 ```
 
 ### Add the shard to the cluster
@@ -287,6 +296,57 @@ To delete the data permanently, remove the volumes as well:
 ```bash
 docker volume rm configsvr-data shard1-data
 ```
+
+### Sharing the keyfile with a bind mount
+
+Instead of letting each container generate its own keyfile and syncing them with `get-keyfile` / `set-keyfile`, you can create a single keyfile on the host and bind-mount it read-only into every container. This avoids the per-member `set-keyfile` + restart step and guarantees that all members use the same key — handy when running each component on a separate host.
+
+On the host machine, seed a keyfile by rotating one in a throwaway container and printing it, then restrict its permissions so that only the `mongodb` user (uid `584788`) can read it:
+
+```bash
+docker run --rm "$IMAGE" exec bash -c 'set-keyfile && get-keyfile' > mongodb-keyfile
+chmod 400 mongodb-keyfile
+sudo chown 584788:584788 mongodb-keyfile
+```
+
+Then add the keyfile as a read-only mount to each `docker run` command from the walkthrough above, for example the config server:
+
+```bash
+docker run -d \
+  --name configsvr \
+  --network mongo-cluster \
+  -v configsvr-data:/var/lib/mongodb \
+  -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
+  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
+  "$IMAGE"
+```
+
+Because a keyfile is already present at `/etc/mongod/keyfile`, the containers reuse it instead of generating their own, so you can skip the `set-keyfile` steps entirely.
+
+> **Note:** Run those `docker run` commands from the directory where you created `mongodb-keyfile`, otherwise `$(pwd)` won't point at the file. The keyfile is bind-mounted from the host, not copied into the containers, so it must remain on the host for the lifetime of the cluster — do not delete it, or containers will fail to start when restarted. A read-only bind-mounted keyfile cannot be changed with `set-keyfile` from inside the container.
+
+## Managing the keyfile
+
+The image provides two commands for inspecting and changing the internal-auth keyfile of a running container. Run them as the default `docker exec` user (root), which can read and rewrite the `400` keyfile owned by uid `584788`:
+
+| Command | Behaviour |
+| ------- | --------- |
+| `get-keyfile` | Print the current keyfile (`/etc/mongod/keyfile`) to standard output. |
+| `set-keyfile <key>` | Store `<key>` as the keyfile contents. |
+| `set-keyfile` | Rotate: generate a fresh random key and store it. |
+
+For example, to copy the auto-generated key from one container into another so they share the same key:
+
+```bash
+key="$(docker exec configsvr get-keyfile)"
+docker exec shard1 set-keyfile "$key"
+```
+
+Notes:
+
+- `mongod` and `mongos` read the keyfile only at startup, so restart the service (`docker restart <container>`) after changing the keyfile for it to take effect.
+- Every member of a sharded cluster must use the same key. When rotating, propagate the new value to all members before restarting them.
+- A keyfile bind-mounted read-only (as in the walkthrough above) cannot be modified from inside the container; rotate it on the host instead and restart the containers.
 
 ## Available tools
 

@@ -41,7 +41,8 @@ rockcraft test craft:ubuntu-24.04:spread/tests/smoke
 The suites are:
 
 - `spread/tests/smoke` — fast checks: mongod starts and accepts connections,
-  `generate-keyfile` works, and the config / PID-file paths are correct.
+  the keyfile is auto-generated, `get-keyfile` / `set-keyfile` work, and the
+  config / PID-file paths are correct.
 - `spread/tests/cluster` — a full sharded cluster (config server, shard, and
   query router) with keyfile authentication, ending in a write and read through
   `mongos`.

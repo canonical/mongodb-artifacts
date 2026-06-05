@@ -37,7 +37,7 @@ parts:
     stage-packages:
       - libssh-4
       - libbrotli1
-      # Provides openssl for the generate-keyfile
+      # Provides openssl for keyfile generation/rotation
       - openssl
   non-root-user:
     plugin: nil
@@ -107,8 +107,12 @@ parts:
     organize:
       start-mongod.sh: bin/start-mongod.sh
       start-mongos.sh: bin/start-mongos.sh
-      generate-keyfile.sh: bin/generate-keyfile
+      keyfile-common.sh: bin/keyfile-common.sh
+      get-keyfile.sh: bin/get-keyfile
+      set-keyfile.sh: bin/set-keyfile
     stage:
       - bin/start-mongod.sh
       - bin/start-mongos.sh
-      - bin/generate-keyfile
+      - bin/keyfile-common.sh
+      - bin/get-keyfile
+      - bin/set-keyfile

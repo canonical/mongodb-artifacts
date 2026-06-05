@@ -48,7 +48,10 @@ execute: |
   docker network create "$NET"
 
   mkdir -p "$KEYDIR"
-  docker run --rm "$IMAGE" exec generate-keyfile > "$KEYDIR/mongodb-keyfile"
+  # Seed a shared keyfile on the host: rotate (generate) one in a throwaway
+  # container and print it. It is then bind-mounted read-only into every member.
+  docker run --rm "$IMAGE" exec bash -c 'set-keyfile && get-keyfile' \
+    > "$KEYDIR/mongodb-keyfile"
 
   chmod 700 "$KEYDIR"
   chown 584788:584788 "$KEYDIR"
