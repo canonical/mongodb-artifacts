@@ -95,7 +95,24 @@ allocate_lxdvm() {
 }
 
 discard_lxdvm() {
-    instance_name="$(lxc ls -f csv | grep ",$SPREAD_SYSTEM_ADDRESS " | cut -f1 -d",")"
+    instance_name="$(
+        lxc list --format=json |
+        jq -r --arg addr "$SPREAD_SYSTEM_ADDRESS" '
+            .[]
+            | select(.state.network[]?.addresses[]?.address == $addr)
+            | .name
+        ' |
+        head -n1
+    )"
+
+    echo "deleting instance $instance_name"
+
+    if [ -z "$instance_name" ]; then
+        echo "could not find instance for $SPREAD_SYSTEM_ADDRESS" >&2
+        lxc list >&2
+        return 1
+    fi
+
     lxc delete -f "$instance_name"
 }
 
