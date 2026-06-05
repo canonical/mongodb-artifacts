@@ -45,7 +45,7 @@ sudo snap install docker
 Pull the published image from the GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/canonical/mongodb-server-sharded:8_edge
+docker pull ghcr.io/canonical/mongodb-server-sharded:<version>-24.04_edge
 ```
 
 Alternatively, import a locally built rock archive into Docker using `skopeo` (bundled with Rockcraft):

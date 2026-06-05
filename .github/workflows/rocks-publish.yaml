@@ -1,21 +1,16 @@
-name: Publish rocksto GHCR
+name: Publish rocks to GHCR
 
 env:
   RELEASE: edge
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 on:
-  push:
-    branches:
-      - 8-24.04
+  workflow_call:
   workflow_dispatch:
 
 jobs:
   discover-rocks:
     uses: ./.github/workflows/rocks-discover.yaml
+
   build:
     name: Build rock | ${{ matrix.rock.name }}
     needs: discover-rocks
@@ -31,11 +26,51 @@ jobs:
       actions: read # Needed for GitHub API call to get workflow version
       contents: read
 
+  test:
+    name: Test rock | ${{ matrix.rock.name }} | ${{ matrix.runner }}
+    needs:
+      - discover-rocks
+      - build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+        runner:
+          - ubuntu-24.04       # amd64
+          - ubuntu-24.04-arm   # arm64
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v0.1.2
+
+      - name: Install Rockcraft
+        run: sudo snap install rockcraft --classic
+
+      # `rockcraft test` packs the rock and runs the spread suites against it
+      # (craft backend). Skip rocks that do not define spread tests.
+      - name: Run spread tests
+        working-directory: ${{ matrix.rock.path }}
+        run: |
+          if [ ! -f spread.yaml ]; then
+            echo "No spread.yaml in ${{ matrix.rock.path }}; failing."
+            exit 1
+          fi
+          rockcraft test
+
+      - name: Rockcraft logs
+        if: ${{ success() || failure() }}
+        run: cat ~/.local/state/rockcraft/log/* || true
+
   publish:
     name: Release rock  | ${{ matrix.rock.name }}
     needs:
       - discover-rocks
       - build
+      - test
     strategy:
       fail-fast: false
       matrix:

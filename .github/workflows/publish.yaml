@@ -1,0 +1,130 @@
+name: Publish
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - 8-24.04
+  workflow_dispatch:
+
+env:
+  # Store channel the rocks stage their snaps from. Each rock stages the snap
+  # of the same name, so the rock build below picks up the revision published
+  # in this same run, once it is live on the channel.
+  CHANNEL: 8/edge
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+
+  discover-snaps:
+    uses: ./.github/workflows/snaps-discover.yaml
+
+  # 1. Record the revision currently live on the store BEFORE publishing, for
+  #    every snap that has a matching rock (same name). The wait step uses this
+  #    to tell when the new revision has propagated.
+  snap-baseline:
+    name: Snapshot current snap revisions
+    needs:
+      - discover-rocks
+      - discover-snaps
+    runs-on: ubuntu-latest
+    outputs:
+      baseline: ${{ steps.baseline.outputs.baseline }}
+    env:
+      ROCKS: ${{ needs.discover-rocks.outputs.rocks }}
+      SNAPS: ${{ needs.discover-snaps.outputs.snaps }}
+    steps:
+      - id: baseline
+        run: |
+          # Snaps to wait on = names present as BOTH a rock and a snap.
+          names=$(jq -nr --argjson r "$ROCKS" --argjson s "$SNAPS" '
+            [$r[].name] as $rn
+            | [$s[].name | select(. as $n | $rn | index($n))]
+            | .[]')
+
+          result='{}'
+          for snap in $names; do
+            revs=$(curl -s -H 'Snap-Device-Series: 16' \
+              "https://api.snapcraft.io/v2/snaps/info/${snap}" \
+              | jq -c '[.["channel-map"][]?
+                         | select(.channel.name == "'"$CHANNEL"'")
+                         | {(.channel.architecture): .revision}] | add // {}')
+            echo "Baseline ${snap} on ${CHANNEL}: ${revs}"
+            result=$(jq -c --arg s "$snap" --argjson r "$revs" '. + {($s): $r}' <<<"$result")
+          done
+          echo "baseline=${result}" >> "$GITHUB_OUTPUT"
+
+  # 2. Build and publish all snaps to the channel first.
+  publish-snaps:
+    name: Publish snaps
+    needs: snap-baseline
+    uses: ./.github/workflows/snaps-publish.yaml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: write
+
+  # 3. Wait until every snap that backs a rock has a newer revision live on the
+  #    channel, for every architecture the rocks are built for.
+  wait-for-snap-revision:
+    name: Wait for new snap revisions
+    needs:
+      - snap-baseline
+      - publish-snaps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASELINE: ${{ needs.snap-baseline.outputs.baseline }}
+    steps:
+      - name: Poll store until newer revisions appear
+        run: |
+          archs="amd64 arm64"
+          snaps=$(jq -r 'keys[]' <<<"$BASELINE")
+          if [ -z "$snaps" ]; then
+            echo "No snap-backed rocks to wait for; nothing to do."
+            exit 0
+          fi
+
+          for i in $(seq 1 60); do
+            all_done=true
+            status=""
+            for snap in $snaps; do
+              cur=$(curl -s -H 'Snap-Device-Series: 16' \
+                "https://api.snapcraft.io/v2/snaps/info/${snap}" \
+                | jq -c '[.["channel-map"][]?
+                           | select(.channel.name == "'"$CHANNEL"'")
+                           | {(.channel.architecture): .revision}] | add // {}')
+              for a in $archs; do
+                base=$(jq -r --arg s "$snap" --arg a "$a" '.[$s][$a] // 0' <<<"$BASELINE")
+                now=$(jq -r --arg a "$a" '.[$a] // 0' <<<"$cur")
+                if [ "$now" -le "$base" ]; then
+                  all_done=false
+                fi
+              done
+              status="${status} ${snap}=${cur}"
+            done
+            if [ "$all_done" = true ]; then
+              echo "All new revisions live on ${CHANNEL}:${status}"
+              exit 0
+            fi
+            echo "Attempt ${i}:${status}; retrying in 30s"
+            sleep 30
+          done
+          echo "Timed out waiting for new snap revisions on ${CHANNEL}"
+          exit 1
+
+  # 4. Build, test and publish the rocks. Publish only happens if build + test
+  #    both pass (gated inside rocks-publish.yaml).
+  publish-rock:
+    name: Build, test and publish rocks
+    needs: wait-for-snap-revision
+    uses: ./.github/workflows/rocks-publish.yaml
+    secrets: inherit
+    permissions:
+      actions: read
+      packages: write
+      contents: write
