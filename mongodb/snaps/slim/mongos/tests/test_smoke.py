@@ -1,5 +1,3 @@
-import base64
-import os
 import yaml
 import subprocess
 import time
@@ -17,41 +15,58 @@ def test_install():
 
 
 @pytest.mark.run(after="test_install")
-def test_store_keyfile():
+def test_set_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
 
-    # Build a representative keyfile (756 random bytes, base64-encoded).
-    content = base64.b64encode(os.urandom(756))
+    content = "test-keyfile-value"
 
     subprocess.run(
-        f"sudo snap run {name}.store-keyfile".split(),
+        ["sudo", "snap", "run", f"{name}.set-keyfile", content],
         check=True,
-        input=content,
     )
 
     stat = subprocess.run(
-        ["sudo", "stat", "-c", "%a %u", keyfile],
+        ["sudo", "stat", "-c", "%a %u %g", keyfile],
         check=True,
         capture_output=True,
         text=True,
     )
-    mode, uid = stat.stdout.split()
+    mode, uid, gid = stat.stdout.split()
     assert mode == "400", f"unexpected keyfile mode: {mode}"
     assert uid == "584788", f"unexpected keyfile owner uid: {uid}"
+    assert gid == "584788", f"unexpected keyfile owner gid: {gid}"
 
-    # The stored content must match what was provided on stdin.
     stored = subprocess.run(
         ["sudo", "cat", keyfile],
         check=True,
         capture_output=True,
+        text=True,
     )
-    assert stored.stdout == content, "stored keyfile content differs"
+    assert stored.stdout == f"{content}\n", "stored keyfile content differs"
 
 
-@pytest.mark.run(after="test_store_keyfile")
+@pytest.mark.run(after="test_set_keyfile")
+def test_mongos_config_keyfile():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+    config_file = f"/var/snap/{name}/current/etc/mongod/mongos.conf"
+
+    config_content = subprocess.run(
+        ["sudo", "cat", config_file],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    loaded_config = yaml.safe_load(config_content.stdout)
+    assert loaded_config["security"]["keyFile"] == keyfile
+
+
+@pytest.mark.run(after="test_mongos_config_keyfile")
 def test_all_apps():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
@@ -94,7 +109,6 @@ def test_mongos_service():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
 
     subprocess.run(
         [
@@ -103,7 +117,7 @@ def test_mongos_service():
             "set",
             name,
             f"mongos-args=--configdb configrs/127.0.0.1:27019 "
-            f"--bind_ip 127.0.0.1 --port 27018 --keyFile {keyfile}",
+            f"--bind_ip 127.0.0.1 --port 27018",
         ],
         check=True,
     )

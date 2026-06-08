@@ -1,0 +1,28 @@
+#!/bin/bash
+# Shared helpers for managing the MongoDB internal-authentication keyfile.
+
+KEYFILE="${KEYFILE:-${SNAP_DATA}/etc/keyfile}"
+KEYFILE_UID=584788
+KEYFILE_GID=584788
+OPENSSL="${OPENSSL:-${SNAP}/usr/bin/openssl}"
+
+# Write stdin to the keyfile with the correct ownership (584788:584788) and
+# permissions (400). The write is atomic: a temporary file in the same
+# directory is populated, locked down, then renamed over the keyfile so that
+# readers never observe a partial key.
+write_keyfile() {
+  local tmp
+  mkdir -p "$(dirname "${KEYFILE}")"
+  tmp="$(mktemp "${KEYFILE}.XXXXXX")"
+  trap 'rm -f "${tmp}"' EXIT
+  cat > "${tmp}"
+  chmod 400 "${tmp}"
+  chown "${KEYFILE_UID}:${KEYFILE_GID}" "${tmp}"
+  mv -f "${tmp}" "${KEYFILE}"
+  trap - EXIT
+}
+
+# Generate a fresh random key and store it in the keyfile.
+generate_keyfile() {
+  "${OPENSSL}" rand -base64 756 | write_keyfile
+}

@@ -45,49 +45,63 @@ details used throughout this guide:
 | Query router      | `mongos` | `mongos-args` | _n/a_         | _n/a_       | `27018` | `127.0.0.1` |
 | Shard server      | `mongod` | `mongod-args` | `--shardsvr`  | `shard1rs`  | `27020` | `0.0.0.0`   |
 
+
+### Configuration files
+The snap stores the MongoDB configuration files at:
+
+- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongos.conf`
+
+Extra MongoDB arguments are passed through `mongod-args` and `mongos-args`. You can read more about the available
+options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/) and
+[`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/) documentation.
+
 ### Configure internal authentication
 
 MongoDB sharded clusters use a shared keyfile for internal authentication between config servers,
 shard servers, and query routers (`mongos`).
 
-### Generate and store a keyfile
+### Get and set a keyfile
 
 The snap includes two helper apps to manage the shared internal authentication keyfile:
 
-- `mongodb-server-sharded.generate-keyfile` generates a new keyfile and writes it to standard output.
-- `mongodb-server-sharded.store-keyfile` reads a keyfile from standard input and stores it securely at `/var/snap/mongodb-server-sharded/common/mongodb-keyfile`.
+- `mongodb-server-sharded.get-keyfile` prints the stored keyfile value to standard output.
+- `mongodb-server-sharded.set-keyfile` stores a specific keyfile value, or rotates to a new random key when no value is provided.
 
-The stored keyfile is owned by the `snap_daemon` user (UID `584788`) and is set to `400` permissions, which is required by MongoDB for internal authentication.
+On install, the snap automatically generates a keyfile at `/var/snap/mongodb-server-sharded/current/etc/keyfile`. The stored keyfile is owned by the `snap_daemon` user (UID `584788`) and is set to `400` permissions, which is required by MongoDB for internal authentication.
 
-1. Generate the keyfile once, on any machine:
-
-```bash
-snap run mongodb-server-sharded.generate-keyfile > mongodb-keyfile
-```
-
-> ⚠️ This file contains a sensitive secret. Once you have copied and stored it on every machine (steps 2–3), delete it.
-
-2. Copy `mongodb-keyfile` to every machine in the sharded cluster.
-
-3. Store the keyfile on each machine using the `store-keyfile` command, then delete the plaintext copy:
+1. Retrieve the generated keyfile from one machine:
 
 ```bash
-sudo snap run mongodb-server-sharded.store-keyfile < mongodb-keyfile && rm mongodb-keyfile
+key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
 ```
 
-Once stored, the keyfile can be referenced by `--keyFile /var/snap/mongodb-server-sharded/common/mongodb-keyfile` when configuring `mongod` and `mongos`.
+2. Store that same key on every other machine in the sharded cluster:
+
+```bash
+sudo snap run mongodb-server-sharded.set-keyfile "$key"
+```
+
+To rotate a key, generate a new value on one machine and then sync it to the others before restarting the cluster members:
+
+```bash
+sudo snap run mongodb-server-sharded.set-keyfile
+key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
+```
+
+The generated `mongod.conf` and `mongos.conf` already reference this keyfile, so it does not need to be passed in `mongod-args` or `mongos-args`.
 
 ### Configure the config server and query router
 
 Configure `mongod` service:
 
 ```bash
-sudo snap set mongodb-server-sharded mongod-args="--configsvr --replSet configrs --port 27019 --bind_ip 127.0.0.1 --keyFile /var/snap/mongodb-server-sharded/common/mongodb-keyfile"
+sudo snap set mongodb-server-sharded mongod-args="--configsvr --replSet configrs --port 27019 --bind_ip 127.0.0.1"
 ```
 
 Configure `mongos`:
 ```bash
-sudo snap set mongodb-server-sharded mongos-args="--configdb configrs/127.0.0.1:27019 --bind_ip 127.0.0.1 --port 27018 --keyFile /var/snap/mongodb-server-sharded/common/mongodb-keyfile"
+sudo snap set mongodb-server-sharded mongos-args="--configdb configrs/127.0.0.1:27019 --bind_ip 127.0.0.1 --port 27018"
 ```
 
 ### Start the services
@@ -150,7 +164,7 @@ db.createUser({
 In the shard machine, configure a shard server using the same keyfile:
 
 ```bash
-sudo snap set mongodb-server-sharded mongod-args="--shardsvr --replSet shard1rs --port 27020 --bind_ip 0.0.0.0 --keyFile /var/snap/mongodb-server-sharded/common/mongodb-keyfile"
+sudo snap set mongodb-server-sharded mongod-args="--shardsvr --replSet shard1rs --port 27020 --bind_ip 0.0.0.0"
 ```
 
 Start the service:
@@ -271,8 +285,8 @@ The output should show the data is stored in `shard1rs`
 ## Available snap apps
 The snap includes the following command-line tools:
 
-- `mongodb-server-sharded.generate-keyfile`
-- `mongodb-server-sharded.store-keyfile`
+- `mongodb-server-sharded.get-keyfile`
+- `mongodb-server-sharded.set-keyfile`
 - `mongodb-server-sharded.mongosh`
 - `mongodb-server-sharded.mongobridge`
 - `mongodb-server-sharded.mongod-cli`
@@ -302,12 +316,6 @@ Logs are stored in:
 
 - `/var/snap/mongodb-server-sharded/common/var/log/mongodb/mongod.log`
 - `/var/snap/mongodb-server-sharded/common/var/log/mongodb/mongos.log`
-
-## Configuration files
-The snap stores the MongoDB configuration files at:
-
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongos.conf`
 
 ## Contributing
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.

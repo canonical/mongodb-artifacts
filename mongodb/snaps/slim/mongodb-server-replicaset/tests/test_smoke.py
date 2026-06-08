@@ -15,6 +15,57 @@ def test_install():
 
 
 @pytest.mark.run(after="test_install")
+def test_keyfile_actions():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+
+    set_content = "test-set-keyfile-value"
+    subprocess.run(
+        ["sudo", "snap", "run", f"{name}.set-keyfile", set_content],
+        check=True,
+    )
+
+    stat = subprocess.run(
+        ["sudo", "stat", "-c", "%a %u %g", keyfile],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    mode, uid, gid = stat.stdout.split()
+    assert mode == "400", f"unexpected keyfile mode: {mode}"
+    assert uid == "584788", f"unexpected keyfile owner uid: {uid}"
+    assert gid == "584788", f"unexpected keyfile owner gid: {gid}"
+
+    retrieved = subprocess.run(
+        f"sudo snap run {name}.get-keyfile".split(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert retrieved.stdout == f"{set_content}\n", "get-keyfile content differs"
+
+
+@pytest.mark.run(after="test_keyfile_actions")
+def test_keyfile_path_in_config():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+
+    config_file = f"/var/snap/{name}/current/etc/mongod/mongod.conf"
+    config_content = subprocess.run(
+        ["sudo", "cat", config_file],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    loaded_config = yaml.safe_load(config_content.stdout)
+    assert loaded_config["security"]["keyFile"] == keyfile
+
+
+@pytest.mark.run(after="test_keyfile_actions")
 def test_all_apps():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)

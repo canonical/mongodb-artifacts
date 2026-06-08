@@ -26,21 +26,21 @@ the config server replica set and routes operations to shards.
 
 `mongos` requires the same shared keyfile used by the other sharded cluster components.
 
-Store the keyfile by piping it into the helper app. This must be run with `sudo` so the snap can assign the correct owner and permissions:
+Set the keyfile with the helper app. This must be run with `sudo` so the snap can assign the correct owner and permissions:
 
 ```bash
-sudo snap run mongos.store-keyfile < /path/to/keyfile
+sudo snap run mongos.set-keyfile "$key"
 ```
 
-The keyfile is stored securely at `/var/snap/mongos/common/mongodb-keyfile`.
+The keyfile is stored securely at `/var/snap/mongos/current/etc/keyfile`.
 
-> ⚠️ If you do not have a keyfile yet, generate one on another cluster component first, then distribute it to all machines. All components must share the same keyfile for internal authentication to work. Make sure you delete the plaintext copy used on the `store-keyfile` command.
+> ⚠️ If you do not have a keyfile yet, generate one on another cluster component first, then distribute it to all machines. All components must share the same keyfile for internal authentication to work.
 
 ### Configure `mongos`
 Set the `mongos` runtime arguments using `snap set`:
 
 ```bash
-sudo snap set mongos mongos-args="--configdb configrs/<CONFIG_SERVER_IP>:27019 --bind_ip 127.0.0.1 --port 27018 --keyFile /var/snap/mongos/common/mongodb-keyfile"
+sudo snap set mongos mongos-args="--configdb configrs/<CONFIG_SERVER_IP>:27019 --bind_ip 127.0.0.1 --port 27018"
 ```
 
 Replace `configrs/<CONFIG_SERVER_IP>:27019` with your actual config server replica set name and members.

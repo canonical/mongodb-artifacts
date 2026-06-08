@@ -21,7 +21,19 @@ sudo snap install mongodb-server-replicaset --channel=8/edge
 
 ## Using the MongoDB replicaset server snap
 
-This snap delivers `mongod` components for a replica set deployment. Run the following command to start the service:
+This snap delivers `mongod` components for a replica set deployment. 
+
+### Configuration files
+The snap stores the MongoDB configuration file at:
+
+- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
+
+Extra MongoDB arguments are passed through `mongod-args`. You can read more about the available
+options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/).
+
+### Start the mongod service
+
+Run the following command to start the service:
 
 ```bash
 sudo snap start mongodb-server-replicaset.mongod
@@ -42,6 +54,8 @@ mongodb-server-replicaset.mongod  disabled  active   -
 ## Available apps
 This snap provides the following apps:
 
+- `mongodb-server-replicaset.get-keyfile`
+- `mongodb-server-replicaset.set-keyfile`
 - `mongodb-server-replicaset.mongobridge`
 - `mongodb-server-replicaset.mongod-cli`
 - `mongodb-server-replicaset.mongodump`
@@ -59,6 +73,27 @@ Use `snap run` with the app name. For example:
 snap run mongodb-server-replicaset.mongosh
 ```
 
+## Internal Authentication Keyfile
+
+Replica set members must share the same MongoDB internal-authentication keyfile.
+The snap provides two helper apps for storing that key securely at
+`/var/snap/mongodb-server-replicaset/current/etc/keyfile`.
+
+Set the keyfile from a shell value:
+
+```bash
+sudo snap run mongodb-server-replicaset.set-keyfile "$key"
+```
+
+Retrieve the stored keyfile value:
+
+```bash
+key="$(sudo snap run mongodb-server-replicaset.get-keyfile)"
+```
+
+The stored keyfile is owned by `snap_daemon` and has `400` permissions. Use this
+path in your replica set `mongod-args` when enabling internal authentication.
+
 ## Getting command help
 To see more information about a service or app, run it with `--help`. For example:
 
@@ -71,11 +106,6 @@ You can use this pattern for any of the included apps.
 Logs are stored in:
 
 - `/var/snap/mongodb-server-replicaset/common/var/log/mongodb/mongod.log`
-
-## Configuration files
-The snap stores the MongoDB configuration file at:
-
-- `/var/snap/mongodb-server-replicaset/current/etc/mongod/mongod.conf`
 
 ## Contributing
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.

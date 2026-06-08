@@ -49,6 +49,10 @@ slots:
         - $SNAP_COMMON/var/log/mongodb
 
 apps:
+  get-keyfile:
+    command: get-keyfile.sh
+  set-keyfile:
+    command: set-keyfile.sh
   mongosh:
     command: drop_priv.sh mongosh
     plugs:

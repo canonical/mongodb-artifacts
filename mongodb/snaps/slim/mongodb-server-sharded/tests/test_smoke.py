@@ -16,49 +16,85 @@ def test_install():
 
 
 @pytest.mark.run(after="test_install")
-def test_generate_and_store_keyfile():
+def test_get_and_set_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
 
-    generated = subprocess.run(
-        f"{name}.generate-keyfile".split(),
+    auto_generated = subprocess.run(
+        f"sudo snap run {name}.get-keyfile".split(),
         check=True,
         capture_output=True,
     )
-    assert generated.stdout, "generate-keyfile produced no output"
+    assert auto_generated.stdout, "get-keyfile produced no output"
 
     # The keyfile must be 756 random bytes, base64-encoded (`rand -base64 756`).
-    decoded = base64.b64decode(generated.stdout)
+    decoded = base64.b64decode(auto_generated.stdout)
     assert len(decoded) == 756, f"expected 756 decoded bytes, got {len(decoded)}"
 
-    subprocess.run(
-        f"sudo snap run {name}.store-keyfile".split(),
-        check=True,
-        input=generated.stdout,
-    )
-
     stat = subprocess.run(
-        ["sudo", "stat", "-c", "%a %u", keyfile],
+        ["sudo", "stat", "-c", "%a %u %g", keyfile],
         check=True,
         capture_output=True,
         text=True,
     )
-    mode, uid = stat.stdout.split()
+    mode, uid, gid = stat.stdout.split()
     assert mode == "400", f"unexpected keyfile mode: {mode}"
     assert uid == "584788", f"unexpected keyfile owner uid: {uid}"
+    assert gid == "584788", f"unexpected keyfile owner gid: {gid}"
 
-    # The stored content must match what was generated.
+    explicit_key = "test-keyfile-value"
+    subprocess.run(
+        ["sudo", "snap", "run", f"{name}.set-keyfile", explicit_key],
+        check=True,
+    )
     stored = subprocess.run(
-        ["sudo", "cat", keyfile],
+        f"sudo snap run {name}.get-keyfile".split(),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert (
+        stored.stdout == f"{explicit_key}\n"
+    ), "set-keyfile did not store explicit key"
+
+    subprocess.run(
+        f"sudo snap run {name}.set-keyfile".split(),
+        check=True,
+    )
+    rotated = subprocess.run(
+        f"sudo snap run {name}.get-keyfile".split(),
         check=True,
         capture_output=True,
     )
-    assert stored.stdout == generated.stdout, "stored keyfile content differs"
+    assert (
+        rotated.stdout != stored.stdout.encode()
+    ), "set-keyfile without a key did not rotate"
+    decoded = base64.b64decode(rotated.stdout)
+    assert len(decoded) == 756, f"expected 756 decoded bytes, got {len(decoded)}"
 
 
-@pytest.mark.run(after="test_generate_and_store_keyfile")
+@pytest.mark.run(after="test_install")
+def test_keyfile_path_in_config():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
+    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+
+    for config in ("mongod.conf", "mongos.conf"):
+        config_file = f"/var/snap/{name}/current/etc/mongod/{config}"
+        config_content = subprocess.run(
+            ["sudo", "cat", config_file],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        loaded_config = yaml.safe_load(config_content.stdout)
+        assert loaded_config["security"]["keyFile"] == keyfile
+
+
+@pytest.mark.run(after="test_get_and_set_keyfile")
 def test_all_apps():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
@@ -101,7 +137,6 @@ def test_all_services():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/common/mongodb-keyfile"
 
     # Configure mongod as the config server ...
     subprocess.run(
@@ -111,7 +146,7 @@ def test_all_services():
             "set",
             name,
             f"mongod-args=--configsvr --replSet configrs --port 27019 "
-            f"--bind_ip 127.0.0.1 --keyFile {keyfile}",
+            f"--bind_ip 127.0.0.1",
         ],
         check=True,
     )
@@ -123,7 +158,7 @@ def test_all_services():
             "set",
             name,
             f"mongos-args=--configdb configrs/127.0.0.1:27019 "
-            f"--bind_ip 127.0.0.1 --port 27018 --keyFile {keyfile}",
+            f"--bind_ip 127.0.0.1 --port 27018",
         ],
         check=True,
     )
