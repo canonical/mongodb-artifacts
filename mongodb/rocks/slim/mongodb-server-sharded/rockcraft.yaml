@@ -54,17 +54,27 @@ parts:
 
       mkdir -p $CRAFT_PRIME/$conf
       cp $CRAFT_STAGE/etc/mongod.conf "${mongo_config_file}"
-      cp $CRAFT_STAGE/etc/mongod.conf "${mongos_config_file}"
 
-      yq -i ".processManagement.fork = false" "${mongo_config_file}"
+      # Common mongod base config
+      yq -i '.processManagement.fork = false' "${mongo_config_file}"
+      yq -i '.net.bindIpAll = true' "${mongo_config_file}"
+      yq -i 'del(.net.bindIp)' "${mongo_config_file}"
+      yq -i '.security.keyFile = "/etc/mongod/keyfile"' "${mongo_config_file}"
+      # Set the security placeholder in the right place
+      sed -i '/^#security:$/d' "${mongo_config_file}"
+      sed -i '/^security:$/i #security:' "${mongo_config_file}"
 
-      yq -i ".processManagement.fork = false" "${mongos_config_file}"
-      yq -i ".processManagement.pidFilePath = \"/var/run/mongos.pid\"" \
+      # Derive mongos config from mongod config
+      cp "${mongo_config_file}" "${mongos_config_file}"
+
+      # mongos-specific changes
+      yq -i '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
         "${mongos_config_file}"
-      yq -i ".net.port = 27018" "${mongos_config_file}"
-      yq -i "del(.storage)" "${mongos_config_file}"
-      yq -i ".systemLog.path = \"/var/log/mongodb/mongos.log\"" \
+      yq -i '.net.port = 27018' "${mongos_config_file}"
+      yq -i 'del(.storage)' "${mongos_config_file}"
+      yq -i '.systemLog.path = "/var/log/mongodb/mongos.log"' \
         "${mongos_config_file}"
+
       chown -R 584788:584788 "${conf}"
 
       # Data/log dirs are root-owned in the base; services run as uid 584788.

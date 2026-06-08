@@ -91,7 +91,7 @@ docker run -d \
   --name configsvr \
   --network mongo-cluster \
   -v configsvr-data:/var/lib/mongodb \
-  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
+  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019" \
   "$IMAGE"
 ```
 
@@ -154,7 +154,7 @@ docker run -d \
   --name shard1 \
   --network mongo-cluster \
   -v shard1-data:/var/lib/mongodb \
-  -e MONGOD_ARGS="--shardsvr --replSet shard1rs --port 27017 --bind_ip_all --keyFile /etc/mongod/keyfile" \
+  -e MONGOD_ARGS="--shardsvr --replSet shard1rs --port 27017" \
   "$IMAGE"
 ```
 
@@ -198,7 +198,7 @@ Start a container running only the `mongos` service by passing the `start mongos
 docker run -d \
   --name mongos \
   --network mongo-cluster \
-  -e MONGOS_ARGS="--configdb configrs/configsvr:27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
+  -e MONGOS_ARGS="--configdb configrs/configsvr:27019" \
   "$IMAGE" start mongos
 ```
 
@@ -317,7 +317,7 @@ docker run -d \
   --network mongo-cluster \
   -v configsvr-data:/var/lib/mongodb \
   -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
-  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019 --bind_ip_all --keyFile /etc/mongod/keyfile" \
+  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019" \
   "$IMAGE"
 ```
 
