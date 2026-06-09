@@ -1,3 +1,4 @@
+import base64
 import os
 import yaml
 import subprocess
@@ -16,17 +17,22 @@ def test_install():
 
 
 @pytest.mark.run(after="test_install")
-def test_keyfile_actions():
+def test_get_and_set_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
     keyfile = f"/var/snap/{name}/current/etc/mongodb-keyfile"
 
-    set_content = "test-set-keyfile-value"
-    subprocess.run(
-        ["sudo", "snap", "run", f"{name}.set-keyfile", set_content],
+    auto_generated = subprocess.run(
+        f"sudo snap run {name}.get-keyfile".split(),
         check=True,
+        capture_output=True,
     )
+    assert auto_generated.stdout, "get-keyfile produced no output"
+
+    # The keyfile must be 756 random bytes, base64-encoded (`rand -base64 756`).
+    decoded = base64.b64decode(auto_generated.stdout)
+    assert len(decoded) == 756, f"expected 756 decoded bytes, got {len(decoded)}"
 
     stat = subprocess.run(
         ["sudo", "stat", "-c", "%a %u %g", keyfile],
@@ -39,16 +45,34 @@ def test_keyfile_actions():
     assert uid == "584788", f"unexpected keyfile owner uid: {uid}"
     assert gid == "584788", f"unexpected keyfile owner gid: {gid}"
 
-    retrieved = subprocess.run(
+    explicit_key = "test-keyfile-value"
+    subprocess.run(
+        ["sudo", "snap", "run", f"{name}.set-keyfile", explicit_key],
+        check=True,
+    )
+    stored = subprocess.run(
         f"sudo snap run {name}.get-keyfile".split(),
         check=True,
         capture_output=True,
         text=True,
     )
-    assert retrieved.stdout == f"{set_content}\n", "get-keyfile content differs"
+    assert (
+        stored.stdout == f"{explicit_key}\n"
+    ), "set-keyfile did not store explicit key"
+
+    subprocess.run(
+        [
+            "sudo",
+            "snap",
+            "run",
+            f"{name}.set-keyfile",
+            auto_generated.stdout.decode().rstrip("\n"),
+        ],
+        check=True,
+    )
 
 
-@pytest.mark.run(after="test_keyfile_actions")
+@pytest.mark.run(after="test_get_and_set_keyfile")
 def test_keyfile_path_in_config():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)

@@ -40,7 +40,7 @@ For development builds, install the generated snap with `--devmode`:
 sudo snap install ./<snap-name>*.snap --devmode
 ```
 
-Each snap also includes its own `README.md` with installation, usage, and build instructions.
+Each snap also includes its own `README.md` and `CONTRIBUTING.md` with installation, usage, and build instructions.
 
 ## Project & Community
 

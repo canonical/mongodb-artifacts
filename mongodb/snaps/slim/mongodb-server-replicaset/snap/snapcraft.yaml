@@ -118,6 +118,7 @@ parts:
       - percona-server-mongodb-server
       - mongodb-shell
       - util-linux
+      - openssl
     stage-snaps:
       - yq
     organize:

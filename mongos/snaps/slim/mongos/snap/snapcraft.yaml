@@ -49,6 +49,8 @@ slots:
         - $SNAP_COMMON/var/log/mongos
 
 apps:
+  get-keyfile:
+    command: get-keyfile.sh
   set-keyfile:
     command: set-keyfile.sh
   mongosh:
@@ -114,6 +116,7 @@ parts:
       - percona-server-mongodb-tools
       - mongodb-shell
       - util-linux
+      - openssl
     stage-snaps:
       - yq
     organize:

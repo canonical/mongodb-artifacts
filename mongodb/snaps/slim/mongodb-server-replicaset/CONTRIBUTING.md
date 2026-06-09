@@ -28,3 +28,5 @@ tox -e lint
 ```bash
 tox -e smoke
 ```
+
+Note that the this command assumes that the snap was already packed.

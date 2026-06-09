@@ -60,6 +60,17 @@ def test_get_and_set_keyfile():
         stored.stdout == f"{explicit_key}\n"
     ), "set-keyfile did not store explicit key"
 
+    subprocess.run(
+        [
+            "sudo",
+            "snap",
+            "run",
+            f"{name}.set-keyfile",
+            auto_generated.stdout.decode().rstrip("\n"),
+        ],
+        check=True,
+    )
+
 
 @pytest.mark.run(after="test_install")
 def test_keyfile_path_in_config():

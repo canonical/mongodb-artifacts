@@ -16,8 +16,14 @@ write_keyfile() {
   tmp="$(mktemp "${KEYFILE}.XXXXXX")"
   trap 'rm -f "${tmp}"' EXIT
   cat > "${tmp}"
+  if [ ! -s "${tmp}" ]; then
+    echo "keyfile: KEY must not be empty" >&2
+    exit 1
+  fi
   chmod 400 "${tmp}"
-  chown "${KEYFILE_UID}:${KEYFILE_GID}" "${tmp}"
+  if [ "$(id -u)" = "0" ]; then
+    chown "${KEYFILE_UID}:${KEYFILE_GID}" "${tmp}"
+  fi
   mv -f "${tmp}" "${KEYFILE}"
   trap - EXIT
 }

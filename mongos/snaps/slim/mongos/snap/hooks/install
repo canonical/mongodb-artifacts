@@ -38,11 +38,6 @@ fi
 
 chown -R 584788:root "${SNAP_COMMON}"/*
 
-if [ ! -s "${KEYFILE}" ]; then
-    . "${SNAP}/keyfile-common.sh"
-    generate_keyfile
-fi
-
 # Copy over the mongos.conf and create needed directories/files
 echo "mongos configuration file does not exist."
 echo "copying default config to ${MONGOS_CONFIG_FILE}"
@@ -60,3 +55,12 @@ sed -i '/^security:$/i #security:' "${MONGOS_CONFIG_FILE}"
 
 # Change ownership of snap directories to allow snap_daemon to read/write
 chown -R 584788:root "${SNAP_DATA}"/*
+
+if [ ! -s "${KEYFILE}" ]; then
+    "${SNAP}/usr/bin/setpriv" \
+        --clear-groups \
+        --reuid snap_daemon \
+        --regid snap_daemon \
+        -- \
+        bash -euo pipefail -c '. "${SNAP}/keyfile-common.sh"; generate_keyfile'
+fi
