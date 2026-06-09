@@ -16,6 +16,7 @@ Run this with sudo; the helper writes the keyfile as the snap_daemon user that
 runs mongos.
 
 Example:
+  key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
   sudo snap run mongos.set-keyfile "$key"
 EOF
 }
@@ -27,14 +28,11 @@ case "${1:-}" in
         ;;
 esac
 
+. "${SNAP}/keyfile-common.sh"
+
 if [ "$#" -ne 1 ]; then
     echo "set-keyfile: expected exactly one KEY argument" >&2
     usage >&2
-    exit 1
-fi
-
-if [ -z "$1" ]; then
-    echo "set-keyfile: KEY must not be empty" >&2
     exit 1
 fi
 
@@ -47,17 +45,11 @@ if [ "$(id -u)" = "0" ]; then
         "${SNAP}/set-keyfile.sh" "$@"
 fi
 
-KEYFILE="${SNAP_DATA}/etc/keyfile"
-TMPFILE="$(mktemp "${KEYFILE}.XXXXXX")"
-trap 'rm -f "${TMPFILE}"' EXIT
+if [ -z "$1" ]; then
+    echo "set-keyfile: KEY must not be empty" >&2
+    exit 1
+fi
 
-printf '%s\n' "$1" > "${TMPFILE}"
-
-# MongoDB requires the keyfile to be owned by the user running the daemon
-# (snap_daemon, uid/gid 584788) and readable only by that owner.
-chmod 400 "${TMPFILE}"
-
-mv "${TMPFILE}" "${KEYFILE}"
-trap - EXIT
+printf '%s\n' "$1" | write_keyfile
 
 echo "Keyfile stored at ${KEYFILE}" >&2

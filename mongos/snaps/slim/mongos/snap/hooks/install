@@ -9,7 +9,7 @@ export DATA="${SNAP_COMMON}"/var/lib/mongodb
 export LOGS="${SNAP_COMMON}"/var/log/mongodb
 export RUN="${SNAP_COMMON}"/run
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
-export KEYFILE="${ETC}"/keyfile
+export KEYFILE="${ETC}"/mongodb-keyfile
 export PID_FILE="${RUN}/mongos.pid"
 
 # Create the necessary parent directories 
@@ -37,6 +37,11 @@ if [ stat -c '%u' "$RUN" == 0 ]; then
 fi
 
 chown -R 584788:root "${SNAP_COMMON}"/*
+
+if [ ! -s "${KEYFILE}" ]; then
+    . "${SNAP}/keyfile-common.sh"
+    generate_keyfile
+fi
 
 # Copy over the mongos.conf and create needed directories/files
 echo "mongos configuration file does not exist."

@@ -22,19 +22,32 @@ sudo snap install mongos --channel=8/edge
 `mongos` is the MongoDB query router for sharded clusters. It connects client requests to
 the config server replica set and routes operations to shards.
 
+### Configuration files
+The snap stores the `mongos` configuration file at:
+
+- `/var/snap/mongos/current/etc/mongod/mongos.conf`
+
+Extra MongoDB arguments are passed through `mongos-args`. You can read more about the available
+options in the [`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/) documentation.
+
 ### Internal authentication keyfile
 
 `mongos` requires the same shared keyfile used by the other sharded cluster components.
 
-Set the keyfile with the helper app. This must be run with `sudo` so the snap can assign the correct owner and permissions:
+Retrive the key file from your config server using:
+
+```
+key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
+```
+
+Set the keyfile in `mongos`:
 
 ```bash
 sudo snap run mongos.set-keyfile "$key"
 ```
 
-The keyfile is stored securely at `/var/snap/mongos/current/etc/keyfile`.
-
-> ⚠️ If you do not have a keyfile yet, generate one on another cluster component first, then distribute it to all machines. All components must share the same keyfile for internal authentication to work.
+The keyfile is stored securely at `/var/snap/mongos/current/etc/mongodb-keyfile`.
+The `mongos.conf` already reference this keyfile, so it does not need to be set using the `mongos-args`.
 
 ### Configure `mongos`
 Set the `mongos` runtime arguments using `snap set`:

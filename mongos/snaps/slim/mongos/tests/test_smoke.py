@@ -1,3 +1,4 @@
+import os
 import yaml
 import subprocess
 import time
@@ -19,7 +20,7 @@ def test_set_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+    keyfile = f"/var/snap/{name}/current/etc/mongodb-keyfile"
 
     content = "test-keyfile-value"
 
@@ -53,7 +54,7 @@ def test_mongos_config_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+    keyfile = os.path.realpath(f"/var/snap/{name}/current/etc/mongodb-keyfile")
     config_file = f"/var/snap/{name}/current/etc/mongod/mongos.conf"
 
     config_content = subprocess.run(

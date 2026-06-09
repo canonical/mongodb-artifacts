@@ -1,9 +1,8 @@
 #!/bin/bash
-# Set or rotate the MongoDB internal-authentication keyfile.
+# Set the MongoDB internal-authentication keyfile.
 #
 # Usage:
 #   mongodb-server-sharded.set-keyfile <key>   Store <key> as the keyfile.
-#   mongodb-server-sharded.set-keyfile         Rotate to a new random key.
 #
 # Run with sudo; the helper writes the keyfile as the snap_daemon user that
 # runs mongod and mongos. The user is responsible for syncing the same keyfile
@@ -12,17 +11,16 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: mongodb-server-sharded.set-keyfile [KEY]
+Usage: mongodb-server-sharded.set-keyfile KEY
 
-Set or rotate the MongoDB internal-authentication keyfile.
+Set the MongoDB internal-authentication keyfile.
 
-With KEY, store that exact value as the keyfile contents. Without KEY, generate
-a fresh random key and store it. Every member of a sharded cluster must use the
-same keyfile value; sync it with get-keyfile/set-keyfile before restarting them.
+Store KEY as the keyfile contents. Every member of a sharded cluster must use
+the same keyfile value; sync it with get-keyfile/set-keyfile before restarting
+them.
 
-Examples:
+Example:
   sudo snap run mongodb-server-sharded.set-keyfile "$key"
-  sudo snap run mongodb-server-sharded.set-keyfile
 EOF
 }
 
@@ -35,8 +33,8 @@ esac
 
 . "${SNAP}/keyfile-common.sh"
 
-if [ "$#" -gt 1 ]; then
-    echo "set-keyfile: expected zero or one argument" >&2
+if [ "$#" -ne 1 ]; then
+    echo "set-keyfile: expected exactly one KEY argument" >&2
     usage >&2
     exit 1
 fi
@@ -50,14 +48,11 @@ if [ "$(id -u)" = "0" ]; then
         "${SNAP}/set-keyfile.sh" "$@"
 fi
 
-if [ "$#" -eq 1 ]; then
-    if [ -z "$1" ]; then
-        echo "set-keyfile: KEY must not be empty" >&2
-        exit 1
-    fi
-    printf '%s\n' "$1" | write_keyfile
-else
-    generate_keyfile
+if [ -z "$1" ]; then
+    echo "set-keyfile: KEY must not be empty" >&2
+    exit 1
 fi
+
+printf '%s\n' "$1" | write_keyfile
 
 echo "Keyfile stored at ${KEYFILE}" >&2

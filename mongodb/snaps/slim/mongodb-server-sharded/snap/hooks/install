@@ -10,7 +10,7 @@ export LOGS="${SNAP_COMMON}"/var/log/mongodb
 export RUN="${SNAP_COMMON}"/run
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
-export KEYFILE="${ETC}"/keyfile
+export KEYFILE="${ETC}"/mongodb-keyfile
 export MONGOD_PID_FILE="${RUN}/mongod.pid"
 export MONGOS_PID_FILE="${RUN}/mongos.pid"
 

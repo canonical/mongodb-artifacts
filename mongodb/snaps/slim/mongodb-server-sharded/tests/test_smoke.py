@@ -1,4 +1,5 @@
 import base64
+import os
 import yaml
 import subprocess
 import time
@@ -20,7 +21,7 @@ def test_get_and_set_keyfile():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+    keyfile = f"/var/snap/{name}/current/etc/mongodb-keyfile"
 
     auto_generated = subprocess.run(
         f"sudo snap run {name}.get-keyfile".split(),
@@ -59,28 +60,13 @@ def test_get_and_set_keyfile():
         stored.stdout == f"{explicit_key}\n"
     ), "set-keyfile did not store explicit key"
 
-    subprocess.run(
-        f"sudo snap run {name}.set-keyfile".split(),
-        check=True,
-    )
-    rotated = subprocess.run(
-        f"sudo snap run {name}.get-keyfile".split(),
-        check=True,
-        capture_output=True,
-    )
-    assert (
-        rotated.stdout != stored.stdout.encode()
-    ), "set-keyfile without a key did not rotate"
-    decoded = base64.b64decode(rotated.stdout)
-    assert len(decoded) == 756, f"expected 756 decoded bytes, got {len(decoded)}"
-
 
 @pytest.mark.run(after="test_install")
 def test_keyfile_path_in_config():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = f"/var/snap/{name}/current/etc/keyfile"
+    keyfile = os.path.realpath(f"/var/snap/{name}/current/etc/mongodb-keyfile")
 
     for config in ("mongod.conf", "mongos.conf"):
         config_file = f"/var/snap/{name}/current/etc/mongod/{config}"

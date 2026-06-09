@@ -10,7 +10,7 @@ export LOGS="${SNAP_COMMON}"/var/log/mongodb
 export RUN="${SNAP_COMMON}"/run
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export PID_FILE="${RUN}/mongod.pid"
-export KEYFILE="${ETC}"/keyfile
+export KEYFILE="${ETC}"/mongodb-keyfile
 
 # Create the necessary parent directories 
 mkdir -p $DATA

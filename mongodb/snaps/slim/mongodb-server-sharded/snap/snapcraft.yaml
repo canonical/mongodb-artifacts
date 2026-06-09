@@ -24,10 +24,6 @@ system-usernames:
   snap_daemon: shared
 
 hooks:
-  post-refresh:
-    plugs:
-      - network
-      - network-bind
   install:
     plugs:
       - network

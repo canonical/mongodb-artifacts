@@ -3,7 +3,7 @@
 
 This repository contains the packaging metadata for creating a snap of Sharded MongoDB built from the official Percona Debian repositories. For more information on snaps, visit [snapcraft.io](https://snapcraft.io/).
 
-This snap is intended to be run as a MongoDB sharded deployment. It delivers both `mongod` and `mongos` components for a complete sharded cluster. If you only need the query router, there is a smaller separate [`mongos`](https://snapcraft.io/mongos) snap available.
+This snap is intended to be run as a MongoDB sharded deployment. It delivers both `mongod` and `mongos` components for a complete sharded cluster. If you only need the query router, standalone [`mongos`](https://snapcraft.io/mongos) snap available.
 
 For replica set deployments, see the [`mongodb-server-replicaset`](https://snapcraft.io/mongodb-server-replicaset) snap.
 
@@ -13,7 +13,7 @@ The snap can be installed directly from the Snap Store. Follow the link below fo
 
 [![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/mongodb-server-sharded)
 
-or 
+or:
 
 ```bash
 sudo snap install mongodb-server-sharded --channel=8/edge
@@ -29,8 +29,8 @@ is therefore spread across several machines:
 - The **config server** runs `mongod` on its own machine.
 - **Each shard** runs `mongod` on its own separate machine.
 - The **query router** (`mongos`) can run alongside the config server, or on a
-  separate machine using the standalone [`mongos`](https://snapcraft.io/mongos)
-  snap.
+  separate machine. You can also use standalone [`mongos`](https://snapcraft.io/mongos)
+  snap in a separate machine.
 
 Make sure the machines can reach each other over the MongoDB ports they are
 configured to use.
@@ -66,9 +66,11 @@ shard servers, and query routers (`mongos`).
 The snap includes two helper apps to manage the shared internal authentication keyfile:
 
 - `mongodb-server-sharded.get-keyfile` prints the stored keyfile value to standard output.
-- `mongodb-server-sharded.set-keyfile` stores a specific keyfile value, or rotates to a new random key when no value is provided.
+- `mongodb-server-sharded.set-keyfile` stores a specific keyfile value.
 
-On install, the snap automatically generates a keyfile at `/var/snap/mongodb-server-sharded/current/etc/keyfile`. The stored keyfile is owned by the `snap_daemon` user (UID `584788`) and is set to `400` permissions, which is required by MongoDB for internal authentication.
+On install, the snap automatically generates a keyfile at `/var/snap/mongodb-server-sharded/current/etc/mongodb-keyfile`.
+The stored keyfile is owned by the `snap_daemon` user (UID `584788`) and is set to `400` permissions,
+which is required by MongoDB for internal authentication.
 
 1. Retrieve the generated keyfile from one machine:
 
@@ -82,14 +84,8 @@ key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
 sudo snap run mongodb-server-sharded.set-keyfile "$key"
 ```
 
-To rotate a key, generate a new value on one machine and then sync it to the others before restarting the cluster members:
-
-```bash
-sudo snap run mongodb-server-sharded.set-keyfile
-key="$(sudo snap run mongodb-server-sharded.get-keyfile)"
-```
-
-The generated `mongod.conf` and `mongos.conf` already reference this keyfile, so it does not need to be passed in `mongod-args` or `mongos-args`.
+The `mongod.conf` and `mongos.conf` already reference this keyfile,
+so it does not need to be set in the `mongod-args` or `mongos-args`.
 
 ### Configure the config server and query router
 
@@ -101,7 +97,7 @@ sudo snap set mongodb-server-sharded mongod-args="--configsvr --replSet configrs
 
 Configure `mongos`:
 ```bash
-sudo snap set mongodb-server-sharded mongos-args="--configdb configrs/127.0.0.1:27019 --bind_ip 127.0.0.1 --port 27018"
+sudo snap set mongodb-server-sharded mongos-args="--configdb configrs/127.0.0.1:27019 --port 27018 --bind_ip 127.0.0.1"
 ```
 
 ### Start the services
@@ -145,7 +141,7 @@ rs.status()
 
 ### Create an admin user
 
-When using a keyfile, authorization is enabled. Create an admin user before running cluster administration commands:
+Create an admin user before running cluster administration commands:
 
 ```javascript
 use admin
@@ -161,10 +157,16 @@ db.createUser({
 
 ### Configure shard servers
 
-In the shard machine, configure a shard server using the same keyfile:
+In the shard machine, configure a shard server:
 
 ```bash
 sudo snap set mongodb-server-sharded mongod-args="--shardsvr --replSet shard1rs --port 27020 --bind_ip 0.0.0.0"
+```
+
+Set the shared keyfile:
+
+```bash
+sudo snap run mongodb-server-sharded.set-keyfile "$key"
 ```
 
 Start the service:

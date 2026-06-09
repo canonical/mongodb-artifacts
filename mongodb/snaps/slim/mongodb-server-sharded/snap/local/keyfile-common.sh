@@ -1,7 +1,7 @@
 #!/bin/bash
 # Shared helpers for managing the MongoDB internal-authentication keyfile.
 
-KEYFILE="${KEYFILE:-${SNAP_DATA}/etc/keyfile}"
+KEYFILE="${KEYFILE:-${SNAP_DATA}/etc/mongodb-keyfile}"
 KEYFILE_UID=584788
 KEYFILE_GID=584788
 OPENSSL="${OPENSSL:-${SNAP}/usr/bin/openssl}"

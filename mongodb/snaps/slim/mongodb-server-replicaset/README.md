@@ -26,14 +26,20 @@ This snap delivers `mongod` components for a replica set deployment.
 ### Configuration files
 The snap stores the MongoDB configuration file at:
 
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-replicaset/current/etc/mongod/mongod.conf`
 
 Extra MongoDB arguments are passed through `mongod-args`. You can read more about the available
 options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/).
 
 ### Start the mongod service
 
-Run the following command to start the service:
+Configure the `mongod` service using the `mongod-args`.
+
+```bash
+sudo snap set mongodb-server-replicaset mongod-args="--port <PORT>"
+```
+
+Start the service:
 
 ```bash
 sudo snap start mongodb-server-replicaset.mongod
@@ -76,14 +82,9 @@ snap run mongodb-server-replicaset.mongosh
 ## Internal Authentication Keyfile
 
 Replica set members must share the same MongoDB internal-authentication keyfile.
-The snap provides two helper apps for storing that key securely at
-`/var/snap/mongodb-server-replicaset/current/etc/keyfile`.
-
-Set the keyfile from a shell value:
-
-```bash
-sudo snap run mongodb-server-replicaset.set-keyfile "$key"
-```
+The snap automatically generates a keyfile and provides two helper apps for storing
+and retrieving that key securely at:
+`/var/snap/mongodb-server-replicaset/current/etc/mongodb-keyfile`.
 
 Retrieve the stored keyfile value:
 
@@ -91,8 +92,13 @@ Retrieve the stored keyfile value:
 key="$(sudo snap run mongodb-server-replicaset.get-keyfile)"
 ```
 
-The stored keyfile is owned by `snap_daemon` and has `400` permissions. Use this
-path in your replica set `mongod-args` when enabling internal authentication.
+Set the keyfile from a shell value:
+
+```bash
+sudo snap run mongodb-server-replicaset.set-keyfile "$key"
+```
+
+The stored keyfile is owned by `snap_daemon` and has `400` permissions.
 
 ## Getting command help
 To see more information about a service or app, run it with `--help`. For example:

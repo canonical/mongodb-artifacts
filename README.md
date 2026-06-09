@@ -15,9 +15,13 @@ mongodb-artifacts/
     ├── snaps/
     │   └── slim/
     │       ├── mongodb-server-replicaset/ # Snap for a MongoDB replica set deployment.
-    │       ├── mongodb-server-sharded/ # Snap for a full MongoDB sharded deployment that includes both `mongod` and `mongos`.
-    │       └── mongos/ # Snap for the MongoDB sharded cluster query router only (`mongos`).
+    │       └── mongodb-server-sharded/ # Snap for a full MongoDB sharded deployment that includes both `mongod` and `mongos`.
     └── rocks/  # future MongoDB rocks
+└── mongos/
+    ├── snaps/
+    │   └── slim/
+    │       └── mongos/ # Snap for the MongoDB sharded cluster query router only (`mongos`).
+    └── rocks/  # future mongos rocks
 ```
 
 ## Getting started
