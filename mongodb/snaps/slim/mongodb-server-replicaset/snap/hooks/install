@@ -11,6 +11,7 @@ export RUN="${SNAP_COMMON}"/run
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export PID_FILE="${RUN}/mongod.pid"
 export KEYFILE="${ETC}"/mongodb-keyfile
+export KEYFILE_CONFIG="$(dirname "${SNAP_DATA}")/current/etc/mongodb-keyfile"
 
 # Create the necessary parent directories 
 mkdir -p $DATA
@@ -48,7 +49,7 @@ yq -i ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
 yq -i ".processManagement.pidFilePath = \"${PID_FILE}\"" "${MONGO_CONFIG_FILE}"
 yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
 yq -i ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
-yq -i ".security.keyFile = \"${KEYFILE}\"" ${MONGO_CONFIG_FILE}
+yq -i ".security.keyFile = \"${KEYFILE_CONFIG}\"" ${MONGO_CONFIG_FILE}
 sed -i '/^#security:$/d' "${MONGO_CONFIG_FILE}"
 sed -i '/^security:$/i #security:' "${MONGO_CONFIG_FILE}"
 

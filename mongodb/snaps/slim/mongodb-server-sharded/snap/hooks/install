@@ -11,6 +11,7 @@ export RUN="${SNAP_COMMON}"/run
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
 export KEYFILE="${ETC}"/mongodb-keyfile
+export KEYFILE_CONFIG="$(dirname "${SNAP_DATA}")/current/etc/mongodb-keyfile"
 export MONGOD_PID_FILE="${RUN}/mongod.pid"
 export MONGOS_PID_FILE="${RUN}/mongos.pid"
 
@@ -47,7 +48,7 @@ cp -r ${SNAP}/etc/mongod.conf ${MONGO_CONFIG_FILE}
 
 # mongod.conf default values are not consistent with the snap directory system.
 yq -i ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
-yq -i ".security.keyFile = \"${KEYFILE}\"" "${MONGO_CONFIG_FILE}"
+yq -i ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGO_CONFIG_FILE}"
 yq -i ".processManagement.pidFilePath = \"${MONGOD_PID_FILE}\"" "${MONGO_CONFIG_FILE}"
 yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
 yq -i ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}

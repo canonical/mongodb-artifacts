@@ -77,7 +77,7 @@ def test_keyfile_path_in_config():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
-    keyfile = os.path.realpath(f"/var/snap/{name}/current/etc/mongodb-keyfile")
+    keyfile = f"/var/snap/{name}/current/etc/mongodb-keyfile"
 
     config_file = f"/var/snap/{name}/current/etc/mongod/mongod.conf"
     config_content = subprocess.run(

@@ -10,6 +10,7 @@ export LOGS="${SNAP_COMMON}"/var/log/mongodb
 export RUN="${SNAP_COMMON}"/run
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
 export KEYFILE="${ETC}"/mongodb-keyfile
+export KEYFILE_CONFIG="$(dirname "${SNAP_DATA}")/current/etc/mongodb-keyfile"
 export PID_FILE="${RUN}/mongos.pid"
 
 # Create the necessary parent directories 
@@ -45,7 +46,7 @@ cp -r ${SNAP}/etc/mongod.conf ${MONGOS_CONFIG_FILE}
 
 # mongos.conf default values are not consistent with the snap directory system.
 yq -i ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
-yq -i ".security.keyFile = \"${KEYFILE}\"" "${MONGOS_CONFIG_FILE}"
+yq -i ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGOS_CONFIG_FILE}"
 yq -i ".processManagement.pidFilePath = \"${PID_FILE}\"" "${MONGOS_CONFIG_FILE}"
 yq -i ".systemLog.path = \"${LOGS}/mongos.log\"" ${MONGOS_CONFIG_FILE}
 yq -i ".net.port = 27018" ${MONGOS_CONFIG_FILE}
