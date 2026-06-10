@@ -5,6 +5,7 @@ execute: |
 
   IMAGE=mongodb-server-sharded:spreadtest
   CONTAINER="${SPREAD_TASK//\//_}"
+  KEY_CONSUMER="${CONTAINER}_key_consumer"
 
   echo "=== Testing mongod and mongos PID and log file paths ==="
   docker run --rm "$IMAGE" exec cat /etc/mongod/mongod.conf | grep -q '/var/run/mongod.pid'
@@ -16,15 +17,11 @@ execute: |
   docker run --rm "$IMAGE" exec mongos --version | grep -qi mongos
 
   echo "=== Testing set-keyfile/get-keyfile round-trip ==="
-  # set-keyfile with no argument rotates (generates) the key; get-keyfile prints
-  # the stored key. A freshly generated key decodes to 756 bytes.
-  bytes="$(docker run --rm "$IMAGE" exec bash -c 'set-keyfile && get-keyfile' \
-    | base64 -d | wc -c)"
-  test "$bytes" -eq 756
-
-  # set-keyfile with an argument stores that exact value.
-  stored="$(docker run --rm "$IMAGE" exec bash -c 'set-keyfile myownkey && get-keyfile')"
-  test "$stored" = "myownkey"
+  # set-keyfile requires an explicit key value.
+  if docker run --rm "$IMAGE" exec set-keyfile; then
+    echo "set-keyfile succeeded without a key"
+    exit 1
+  fi
 
   # A default container runs mongod, which stays up and accepts connections.
   echo "=== Testing mongod connectivity ==="
@@ -41,8 +38,17 @@ execute: |
   test "$ok" -eq 1
 
   echo "=== Testing keyfile is auto-generated with correct ownership/mode ==="
-  perms="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/keyfile)"
-  test "$perms" = "400 584788 584788"
+  permissions="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
+  test "$permissions" = "400 584788 584788"
+
+  echo "=== Testing generated keyfile can be copied to another container ==="
+  keyfile_content="$(docker exec "$CONTAINER" get-keyfile)"
+  docker run -d --name "$KEY_CONSUMER" "$IMAGE"
+  docker exec "$KEY_CONSUMER" set-keyfile "$keyfile_content"
+  stored="$(docker exec "$KEY_CONSUMER" get-keyfile)"
+  test "$stored" = "$keyfile_content"
+  permissions="$(docker exec "$KEY_CONSUMER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
+  test "$permissions" = "400 584788 584788"
 
   echo "=== Testing mongod service state ==="
   mongod_state="$(docker exec "$CONTAINER" pebble services mongod | awk '$1 == "mongod" {print $3}')"
@@ -55,4 +61,4 @@ execute: |
   test "$mongos_state" = "inactive"
 
 restore: |
-  docker rm -f "${SPREAD_TASK//\//_}" || true
+  docker rm -f "${SPREAD_TASK//\//_}" "${SPREAD_TASK//\//_}_key_consumer" || true

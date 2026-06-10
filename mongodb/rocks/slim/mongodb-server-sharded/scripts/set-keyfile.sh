@@ -1,23 +1,43 @@
 #!/bin/bash
-# Set or rotate the MongoDB internal-authentication keyfile.
-#
-# Usage:
-#   set-keyfile <key>   Store <key> as the keyfile contents.
-#   set-keyfile         Rotate: generate a fresh random key and store it.
-#
-# The keyfile is written with mode 400, owned by the mongodb user (584788), so
-# this must run as root (the default user for "docker exec").
-#
-# Note: mongod/mongos read the keyfile only at startup, so restart the service
-# after changing it. Every member of a sharded cluster must use the same key, so
-# propagate the new value with get-keyfile/set-keyfile before restarting them. A
-# keyfile bind-mounted read-only cannot be modified from inside the container.
+# Set the MongoDB internal-authentication keyfile.
 set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage: set-keyfile KEY
+
+Set the MongoDB internal-authentication keyfile.
+
+Store KEY as the keyfile contents. Every member of a sharded cluster must use the
+same keyfile value; sync it with get-keyfile/set-keyfile before restarting
+them.
+
+Example:
+  docker exec shard1 set-keyfile "$KEYFILE_CONTENT"
+  docker restart shard1
+EOF
+}
+
+case "${1:-}" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+esac
 
 source /bin/keyfile-common.sh
 
-if [ "$#" -gt 0 ]; then
-  printf '%s\n' "$1" | write_keyfile
-else
-  generate_keyfile
+if [ "$#" -ne 1 ]; then
+    echo "set-keyfile: expected exactly one KEY argument" >&2
+    usage >&2
+    exit 1
 fi
+
+if [ -z "$1" ]; then
+    echo "set-keyfile: KEY must not be empty" >&2
+    exit 1
+fi
+
+printf '%s\n' "$1" | write_keyfile
+
+echo "Keyfile stored at ${KEYFILE}" >&2

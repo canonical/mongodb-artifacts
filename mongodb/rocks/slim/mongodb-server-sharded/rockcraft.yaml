@@ -57,9 +57,8 @@ parts:
 
       # Common mongod base config
       yq -i '.processManagement.fork = false' "${mongo_config_file}"
-      yq -i '.net.bindIpAll = true' "${mongo_config_file}"
-      yq -i 'del(.net.bindIp)' "${mongo_config_file}"
-      yq -i '.security.keyFile = "/etc/mongod/keyfile"' "${mongo_config_file}"
+      yq -i '.security.keyFile = "/etc/mongod/mongodb-keyfile"''\
+        "${mongo_config_file}"
       # Set the security placeholder in the right place
       sed -i '/^#security:$/d' "${mongo_config_file}"
       sed -i '/^security:$/i #security:' "${mongo_config_file}"
@@ -74,6 +73,8 @@ parts:
       yq -i 'del(.storage)' "${mongos_config_file}"
       yq -i '.systemLog.path = "/var/log/mongodb/mongos.log"' \
         "${mongos_config_file}"
+
+      rm $CRAFT_PRIME/etc/mongod.conf
 
       chown -R 584788:584788 "${conf}"
 

@@ -2,11 +2,17 @@
 
 [![Operator Tests](https://github.com/canonical/mongodb-artifacts/actions/workflows/integration.yaml/badge.svg)](https://github.com/canonical/mongodb-artifacts/actions/workflows/integration.yaml)
 
-[MongoDB](https://github.com/mongodb/mongo) is a source-available, cross-platform, document-oriented database application. Classified as a NoSQL database program, MongoDB uses JSON-like documents with optional schemas.
+[MongoDB](https://github.com/mongodb/mongo) is a source-available, cross-platform,
+document-oriented database application. Classified as a NoSQL database program,
+MongoDB uses JSON-like documents with optional schemas.
 
-The Sharded MongoDB Server rock is an Open Container Initiative (OCI) image derived from the [Sharded MongoDB Server snap](https://snapcraft.io/mongodb-server-sharded) and built from the official Percona repositories. The tool used to create this rock is called [Rockcraft](https://canonical-rockcraft.readthedocs-hosted.com/en/latest/index.html).
+The Sharded MongoDB Server rock is an Open Container Initiative (OCI) image derived from the
+[Sharded MongoDB Server snap](https://snapcraft.io/mongodb-server-sharded) and built from the
+official Percona repositories. The tool used to create this rock is called
+[Rockcraft](https://canonical-rockcraft.readthedocs-hosted.com/en/latest/index.html).
 
-This rock is intended to be run as a MongoDB sharded deployment. It delivers both the `mongod` and `mongos` components for a complete sharded cluster, plus the standard MongoDB administration tools.
+This rock is intended to be run as a MongoDB sharded deployment. It delivers both the `mongod`
+and `mongos` components for a complete sharded cluster, plus the standard MongoDB administration tools.
 
 For replica set deployments, see the [`mongodb-server-replicaset`](https://snapcraft.io/mongodb-server-replicaset) rock.
 For standalone mongos, see [`mongos`]
@@ -20,17 +26,17 @@ The rock defines two services:
 | `mongod` | `enabled`  | `/usr/bin/mongod` (config server / shard) | `27017` |
 | `mongos` | `disabled` | `/usr/bin/mongos` (query router) | `27018` |
 
-Because a single container hosts a single role, the `mongod` service starts automatically while `mongos` is started on demand:
-
-- A default container runs `mongod`. Use it for config servers and shard servers.
-- A container started with `start mongos` runs only the query router.
+Given that a single container hosts a single role, the `mongod` service starts
+automatically while `mongos` is started on demand.
 
 Both services run as the unprivileged `mongodb` user (uid `584788`) and read the configuration files found into the image:
 
 - `mongod` &rarr; `/etc/mongod/mongod.conf` (data in `/var/lib/mongodb`)
 - `mongos` &rarr; `/etc/mongod/mongos.conf`
 
-Extra MongoDB arguments are passed through the `MONGOD_ARGS` and `MONGOS_ARGS` environment variables. You can read more about the available options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/) and [`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/) documentation.
+Extra MongoDB arguments are passed through the `MONGOD_ARGS` and `MONGOS_ARGS` environment
+variables. You can read more about the available options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/)
+and [`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/) documentation.
 
 ## Installing Docker
 
@@ -45,26 +51,29 @@ sudo snap install docker
 Pull the published image from the GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/canonical/mongodb-server-sharded:<version>-24.04_edge
+docker pull ghcr.io/canonical/mongodb-server-sharded:<version>
 ```
 
 Alternatively, import a locally built rock archive into Docker using `skopeo` (bundled with Rockcraft):
 
 ```bash
 sudo rockcraft.skopeo --insecure-policy copy \
-  oci-archive:mongodb-server-sharded_8.0.10-4_amd64.rock \
-  docker-daemon:ghcr.io/canonical/mongodb-server-sharded:8_edge
+  oci-archive:mongodb-server-sharded_*_amd64.rock \
+  docker-daemon:ghcr.io/canonical/mongodb-server-sharded:local-test
 ```
 
-The rest of this guide refers to the image through the `IMAGE` shell variable, so that you can adjust the tag in a single place:
+The rest of this guide refers to the image through the `IMAGE` shell variable, so that you can
+adjust the tag in a single place:
 
 ```bash
-export IMAGE=ghcr.io/canonical/mongodb-server-sharded:8_edge
+export IMAGE=ghcr.io/canonical/mongodb-server-sharded:local-test
 ```
 
 ## Using the rock as a sharded cluster
 
-The following walkthrough builds a minimal sharded cluster on a single host using one config server, one shard, and one query router, all on a dedicated Docker network. In production, run each component on a separate host and use multi-member replica sets.
+The following walkthrough builds a minimal sharded cluster on a single host using one config server,
+one shard, and one query router, all on a dedicated Docker network. In production, run each component
+on a separate host and use multi-member replica sets.
 
 ### Create a Docker network
 
@@ -76,28 +85,35 @@ docker network create mongo-cluster
 
 ### Configure internal authentication
 
-MongoDB sharded clusters use a shared keyfile for internal authentication between config servers, shard servers, and query routers (`mongos`). Every member must use the same keyfile.
+MongoDB sharded clusters use a shared keyfile for internal authentication between config servers,
+shard servers, and query routers (`mongos`). Every member must use the same keyfile.
 
-Each container automatically generates a keyfile at `/etc/mongod/keyfile` (mode `400`, owned by the `mongodb` user, uid `584788`) the first time it starts, unless a keyfile is already present at that path.
+Each container automatically generates a keyfile at `/etc/mongod/mongodb-keyfile` (mode `400`,
+owned by the `mongodb` user, uid `584788`) the first time it starts, unless a keyfile is already
+present at that path.
 
-In this walkthrough we let the config server generate the key, read it back with `get-keyfile`, and apply it to the shard and the query router with `set-keyfile`. (For an alternative that shares a single keyfile from the host, see [Sharing the keyfile with a bind mount](#sharing-the-keyfile-with-a-bind-mount).)
+In this walkthrough we let the config server generate the key, read it back with `get-keyfile`,
+and apply it to the shard and the mongos with `set-keyfile`.
 
 ### Start the config server
 
-Start a `mongod` container as a config server. It joins the `configrs` replica set, listens on port `27019`, and mounts a data volume. On first start it generates the keyfile that the rest of the cluster will share:
+Start a `mongod` container as a config server. It joins the `configrs` replica set, listens
+on port `27019`, and mounts a data volume. On first start it generates the keyfile that the
+rest of the cluster will share:
 
 ```bash
 docker run -d \
   --name configsvr \
   --network mongo-cluster \
   -v configsvr-data:/var/lib/mongodb \
-  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019" \
+  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019 --bind_ip 0.0.0.0" \
   "$IMAGE"
 ```
 
 #### Read the generated keyfile
 
-Capture the key the config server just generated into a shell variable, so you can apply it to the other members:
+Capture the key the config server just generated into a shell variable, so you can
+apply it to the other members:
 
 ```bash
 KEYFILE_CONTENT="$(docker exec configsvr get-keyfile)"
@@ -131,7 +147,8 @@ rs.status()
 
 #### Create an admin user
 
-When using a keyfile, authorization is enabled. Use the localhost exception to create an admin user before running cluster administration commands:
+When using a keyfile, authorization is enabled. Use the localhost exception to create an
+admin user before running cluster administration commands:
 
 ```javascript
 use admin
@@ -147,18 +164,20 @@ db.createUser({
 
 ### Start a shard server
 
-Start another `mongod` container as a shard server. It joins the `shard1rs` replica set and listens on the default port `27017`:
+Start another `mongod` container as a shard server. It joins the `shard1rs` replica set and
+listens on the default port `27017`:
 
 ```bash
 docker run -d \
   --name shard1 \
   --network mongo-cluster \
   -v shard1-data:/var/lib/mongodb \
-  -e MONGOD_ARGS="--shardsvr --replSet shard1rs --port 27017" \
+  -e MONGOD_ARGS="--shardsvr --replSet shard1rs --port 27017 --bind_ip 0.0.0.0" \
   "$IMAGE"
 ```
 
-On first start this container generated its *own* keyfile. Replace it with the config server's key and restart so `mongod` reloads it (the keyfile is only read at startup):
+On first start this container generated its *own* keyfile. Replace it with the config server's key
+and restart so `mongod` reloads it (the keyfile is only read at startup):
 
 ```bash
 docker exec shard1 set-keyfile "$KEYFILE_CONTENT"
@@ -192,17 +211,19 @@ rs.status()
 
 ### Start the query router
 
-Start a container running only the `mongos` service by passing the `start mongos` subcommand to Pebble. The router points at the config server replica set and listens on port `27018`:
+Start a container running only the `mongos` service by passing the `start mongos` subcommand to Pebble.
+The router points at the config server replica set and listens on port `27018`:
 
 ```bash
 docker run -d \
   --name mongos \
   --network mongo-cluster \
-  -e MONGOS_ARGS="--configdb configrs/configsvr:27019" \
+  -e MONGOS_ARGS="--configdb configrs/configsvr:27019 --bind_ip 0.0.0.0" \
   "$IMAGE" start mongos
 ```
 
-Like the shard, this container generated its own keyfile on first start. Apply the shared key and restart so it can authenticate to the config server:
+Like the shard, this container generated its own keyfile on first start. Apply the shared
+key and restart so it can authenticate to the config server:
 
 ```bash
 docker exec mongos set-keyfile "$KEYFILE_CONTENT"
@@ -289,7 +310,8 @@ docker rm configsvr shard1 mongos
 docker network rm mongo-cluster
 ```
 
-Removing the containers does **not** delete their data: the `configsvr-data` and `shard1-data` volumes persist, so you can start fresh containers against the same volumes and recover the data.
+Removing the containers does **not** delete their data: the `configsvr-data` and `shard1-data`
+volumes persist, so you can start fresh containers against the same volumes and recover the data.
 
 To delete the data permanently, remove the volumes as well:
 
@@ -297,43 +319,16 @@ To delete the data permanently, remove the volumes as well:
 docker volume rm configsvr-data shard1-data
 ```
 
-### Sharing the keyfile with a bind mount
-
-Instead of letting each container generate its own keyfile and syncing them with `get-keyfile` / `set-keyfile`, you can create a single keyfile on the host and bind-mount it read-only into every container. This avoids the per-member `set-keyfile` + restart step and guarantees that all members use the same key — handy when running each component on a separate host.
-
-On the host machine, seed a keyfile by rotating one in a throwaway container and printing it, then restrict its permissions so that only the `mongodb` user (uid `584788`) can read it:
-
-```bash
-docker run --rm "$IMAGE" exec bash -c 'set-keyfile && get-keyfile' > mongodb-keyfile
-chmod 400 mongodb-keyfile
-sudo chown 584788:584788 mongodb-keyfile
-```
-
-Then add the keyfile as a read-only mount to each `docker run` command from the walkthrough above, for example the config server:
-
-```bash
-docker run -d \
-  --name configsvr \
-  --network mongo-cluster \
-  -v configsvr-data:/var/lib/mongodb \
-  -v "$(pwd)/mongodb-keyfile:/etc/mongod/keyfile:ro" \
-  -e MONGOD_ARGS="--configsvr --replSet configrs --port 27019" \
-  "$IMAGE"
-```
-
-Because a keyfile is already present at `/etc/mongod/keyfile`, the containers reuse it instead of generating their own, so you can skip the `set-keyfile` steps entirely.
-
-> **Note:** Run those `docker run` commands from the directory where you created `mongodb-keyfile`, otherwise `$(pwd)` won't point at the file. The keyfile is bind-mounted from the host, not copied into the containers, so it must remain on the host for the lifetime of the cluster — do not delete it, or containers will fail to start when restarted. A read-only bind-mounted keyfile cannot be changed with `set-keyfile` from inside the container.
-
 ## Managing the keyfile
 
-The image provides two commands for inspecting and changing the internal-auth keyfile of a running container. Run them as the default `docker exec` user (root), which can read and rewrite the `400` keyfile owned by uid `584788`:
+The image provides two commands for inspecting and changing the internal-auth keyfile of a
+running container. Run them as the default `docker exec` user (root), which can read and
+rewrite the `400` keyfile owned by uid `584788`:
 
 | Command | Behaviour |
 | ------- | --------- |
-| `get-keyfile` | Print the current keyfile (`/etc/mongod/keyfile`) to standard output. |
+| `get-keyfile` | Print the current keyfile (`/etc/mongod/mongodb-keyfile`) to standard output. |
 | `set-keyfile <key>` | Store `<key>` as the keyfile contents. |
-| `set-keyfile` | Rotate: generate a fresh random key and store it. |
 
 For example, to copy the auto-generated key from one container into another so they share the same key:
 
@@ -344,16 +339,20 @@ docker exec shard1 set-keyfile "$key"
 
 Notes:
 
-- `mongod` and `mongos` read the keyfile only at startup, so restart the service (`docker restart <container>`) after changing the keyfile for it to take effect.
-- Every member of a sharded cluster must use the same key. When rotating, propagate the new value to all members before restarting them.
-- A keyfile bind-mounted read-only (as in the walkthrough above) cannot be modified from inside the container; rotate it on the host instead and restart the containers.
+- `mongod` and `mongos` read the keyfile only at startup, so restart the service
+(`docker restart <container>`) after changing the keyfile for it to take effect.
+- Every member of a sharded cluster must use the same key. When rotating, propagate
+the new value to all members before restarting them.
 
 ## Available tools
 
 The rock also packages the standard MongoDB command-line tools:
 
+- `get-keyfile`
+- `set-keyfile`
 - `mongosh`
 - `mongobridge`
+- `mongod-cli`
 - `mongodump`
 - `mongoexport`
 - `mongofiles`
