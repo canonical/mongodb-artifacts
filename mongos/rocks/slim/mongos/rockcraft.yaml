@@ -48,7 +48,6 @@ parts:
       mkdir -p $CRAFT_PRIME/$conf
       cp $CRAFT_STAGE/etc/mongod.conf "${mongos_config_file}"
 
-      # Common mongod base config
       yq -i '.processManagement.fork = false' "${mongos_config_file}"
       yq -i '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
         "${mongos_config_file}"
@@ -66,9 +65,9 @@ parts:
 
       chown -R 584788:584788 "${conf}"
 
-      # Data/log dirs are root-owned in the base; services run as uid 584788.
-      chown -R 584788:584788 \
-        "$CRAFT_PRIME/var/lib/mongodb" "$CRAFT_PRIME/var/log/mongodb"
+      # Add logs dirs and set owner uid 584788.
+      mkdir -p "$CRAFT_PRIME/var/log/mongodb"
+      chown -R 584788:584788 "$CRAFT_PRIME/var/log/mongodb"
 
       # The PID files are stored in `/var/run`
       mkdir -p "$CRAFT_PRIME/run"

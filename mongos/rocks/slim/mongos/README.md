@@ -12,8 +12,8 @@ tool used to create this rock is called
 This rock is intended to run `mongos`, the MongoDB query router for sharded clusters. It connects
 client requests to the config server replica set and routes operations to the appropriate shards.
 
-This image does not run `mongod` and does not store cluster data. For data-bearing sharded
-deployments, use the `mongodb-server-sharded` rock. For replica set deployments, use the
+This image does not run `mongod` and does not store cluster data. For config-servers and shards
+use the `mongodb-server-sharded` rock. For replica set deployments, use the
 `mongodb-server-replicaset` rock.
 
 ## How the rock is structured

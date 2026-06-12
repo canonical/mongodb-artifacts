@@ -41,7 +41,7 @@ rockcraft test craft:ubuntu-24.04:spread/tests/smoke
 The suites are:
 
 - `spread/tests/smoke` — fast checks: mongos starts, helper command and config are correct
-- `spread/tests/cluster` — mongos router against a sharded cluster with keyfile auth
+
 
 Each task manages its own containers and cleans them up in its `restore`
 section, so they do not interfere with any cluster you run by hand.

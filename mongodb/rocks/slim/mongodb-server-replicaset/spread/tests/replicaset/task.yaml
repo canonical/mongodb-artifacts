@@ -1,4 +1,4 @@
-summary: Three-member replica set with keyfile auth
+summary: Three-member replica set with keyfile
 
 execute: |
   set -euo pipefail
@@ -16,8 +16,7 @@ execute: |
   ADMIN_URI="mongodb://admin:${ADMIN_PWD}@127.0.0.1:27017/admin"
   DIRECT_AUTH_URI="mongodb://admin:${ADMIN_PWD}@127.0.0.1:27017/admin?directConnection=true"
 
-  # Block until the mongod in $1 answers ping. Remaining args are the mongosh
-  # connection target (for example, "--port 27017" or a connection URI).
+  # Block until the mongod in $1 answers ping. Remaining arg is the mongosh connection port
   wait_ping() {
     local container="$1"
     shift
@@ -32,16 +31,26 @@ execute: |
     return 1
   }
 
-  # Block until the replica set member in $1 becomes primary.
+  get_primary() {
+    for member in "$MEMBER1" "$MEMBER2" "$MEMBER3"; do
+      if docker exec "$member" mongosh --port 27017 --quiet \
+          --eval 'db.hello().isWritablePrimary' | grep -qx true; then
+        echo "$member"
+        return 0
+      fi
+    done
+    return 1
+  }
+
   wait_primary() {
     for _ in $(seq 1 45); do
-      if docker exec "$1" mongosh --port 27017 --quiet \
-          --eval 'db.hello().isWritablePrimary' | grep -qx true; then
+      if primary="$(get_primary)"; then
+        echo "$primary"
         return 0
       fi
       sleep 2
     done
-    echo "no primary elected on $1"
+    echo "no primary elected" >&2
     return 1
   }
 
@@ -62,7 +71,7 @@ execute: |
   wait_replicated_read() {
     for _ in $(seq 1 45); do
       if docker exec "$1" mongosh "${DIRECT_AUTH_URI}&readPreference=secondaryPreferred" --quiet \
-          --eval "db.getMongo().setReadPref('secondaryPreferred'); db.getSiblingDB('itest').items.findOne({_id: 1})?.v" \
+          --eval "db.getMongo().setReadPref('secondaryPreferred'); db.getSiblingDB('my-test-db').items.findOne({_id: 1})?.v" \
           | grep -qx hello; then
         return 0
       fi
@@ -113,26 +122,35 @@ execute: |
   docker exec "$MEMBER1" mongosh --port 27017 --quiet \
     --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '${MEMBER1}:27017'}, {_id: 1, host: '${MEMBER2}:27017'}, {_id: 2, host: '${MEMBER3}:27017'}]}).ok" \
     | grep -qx 1
-  wait_primary "$MEMBER1"
+  PRIMARY="$(wait_primary)"
+  echo "Primary elected: ${PRIMARY}"
 
   echo "=== Creating admin user ==="
-  docker exec "$MEMBER1" mongosh --port 27017 --quiet \
+  docker exec "$PRIMARY" mongosh --port 27017 --quiet \
     --eval "db.getSiblingDB('admin').createUser({user: 'admin', pwd: '${ADMIN_PWD}', roles: [{role: 'root', db: 'admin'}]})"
 
   echo "=== Waiting for secondaries ==="
-  wait_secondary "$MEMBER2"
-  wait_secondary "$MEMBER3"
+  SECONDARIES=()
+  for member in "$MEMBER1" "$MEMBER2" "$MEMBER3"; do
+    if [ "$member" != "$PRIMARY" ]; then
+      SECONDARIES+=("$member")
+      wait_secondary "$member"
+    fi
+  done
+  test "${#SECONDARIES[@]}" -eq 2
 
   echo "=== Testing write through primary ==="
-  docker exec "$MEMBER1" mongosh "$ADMIN_URI" --quiet \
-    --eval "db.getSiblingDB('itest').items.insertOne({_id: 1, v: 'hello'}).acknowledged" \
+  docker exec "$PRIMARY" mongosh "$ADMIN_URI" --quiet \
+    --eval "db.getSiblingDB('my-test-db').items.insertOne({_id: 1, v: 'hello'}).acknowledged" \
     | grep -qx true
-  docker exec "$MEMBER1" mongosh "$ADMIN_URI" --quiet \
-    --eval "db.getSiblingDB('itest').items.findOne({_id: 1}).v" \
+  docker exec "$PRIMARY" mongosh "$ADMIN_URI" --quiet \
+    --eval "db.getSiblingDB('my-test-db').items.findOne({_id: 1}).v" \
     | grep -qx hello
 
   echo "=== Testing replicated read from secondary ==="
-  wait_replicated_read "$MEMBER2"
+  for secondary in "${SECONDARIES[@]}"; do
+    wait_replicated_read "$secondary"
+  done
 
 restore: |
   set +u

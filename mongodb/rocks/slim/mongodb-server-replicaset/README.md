@@ -166,8 +166,7 @@ rs.status()
 
 ### Create an admin user
 
-When using a keyfile, authorization is enabled. Use the localhost exception to create an admin user
-before running authenticated administration commands:
+Use the localhost exception to create an admin user:
 
 ```javascript
 use admin

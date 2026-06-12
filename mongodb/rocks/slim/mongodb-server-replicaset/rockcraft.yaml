@@ -43,7 +43,6 @@ parts:
 
       conf="etc/mongod"
       mongo_config_file="${conf}/mongod.conf"
-      mongos_config_file="${conf}/mongos.conf"
 
       mkdir -p $CRAFT_PRIME/$conf
       cp $CRAFT_STAGE/etc/mongod.conf "${mongo_config_file}"
