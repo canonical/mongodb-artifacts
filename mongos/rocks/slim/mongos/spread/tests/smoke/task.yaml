@@ -1,0 +1,56 @@
+summary: Smoke test - mongos starts, helper command and config are correct
+
+execute: |
+  set -euo pipefail
+
+  IMAGE=mongos:spreadtest
+  CONTAINER="${SPREAD_TASK//\//_}"
+
+  echo "=== Testing mongos PID and log file paths ==="
+  docker run --rm "$IMAGE" exec cat /etc/mongod/mongos.conf | grep -q '/var/run/mongos.pid'
+  docker run --rm "$IMAGE" exec cat /etc/mongod/mongos.conf | grep -q '/var/log/mongodb/mongos.log'
+
+  echo "=== Testing mongos binary availability ==="
+  docker run --rm "$IMAGE" exec mongos --version | grep -qi mongos
+
+  echo "=== Testing no mongod service is defined ==="
+  if docker run --rm "$IMAGE" exec pebble services mongod; then
+    echo "mongod service exists in mongos rock"
+    exit 1
+  fi
+
+  echo "=== Testing set-keyfile/get-keyfile round-trip ==="
+  # set-keyfile requires an explicit key value.
+  if docker run --rm "$IMAGE" exec set-keyfile; then
+    echo "set-keyfile succeeded without a key"
+    exit 1
+  fi
+
+  docker run --rm "$IMAGE" exec /bin/bash -c \
+    'set-keyfile test-key >/dev/null && test "$(get-keyfile)" = "test-key"'
+  docker run --rm "$IMAGE" exec /bin/bash -c \
+    'set-keyfile test-key >/dev/null && test "$(stat -c "%a %u %g" /etc/mongod/mongodb-keyfile)" = "400 584788 584788"'
+
+  # mongos requires a config server, so this smoke test does not assert
+  # connectivity. The cluster test covers the router against a real topology.
+  echo "=== Testing mongos service definition and keyfile generation ==="
+  docker run -d --name "$CONTAINER" "$IMAGE"
+
+  keyfile_ready=0
+  for _ in $(seq 1 30); do
+    if docker exec "$CONTAINER" test -f /etc/mongod/mongodb-keyfile; then
+      keyfile_ready=1
+      break
+    fi
+    sleep 2
+  done
+  test "$keyfile_ready" -eq 1
+
+  permissions="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
+  test "$permissions" = "400 584788 584788"
+
+  mongos_service="$(docker exec "$CONTAINER" pebble services mongos | awk '$1 == "mongos" {print $1}')"
+  test "$mongos_service" = "mongos"
+
+restore: |
+  docker rm -f "${SPREAD_TASK//\//_}" || true
