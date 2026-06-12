@@ -1,0 +1,27 @@
+name: Discover rocks
+
+on:
+  workflow_call:
+    outputs:
+      rocks:
+        description: "Discovered rock path/name list"
+        value: ${{ jobs.discover-rocks.outputs.rocks }}
+
+jobs:
+  discover-rocks:
+    runs-on: ubuntu-latest
+    outputs:
+      rocks: ${{ steps.discover.outputs.rocks }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: discover
+        run: |
+          rocks=$(
+            find mongodb/rocks -path '*/rocks/*/rockcraft.yaml' \
+              | sed 's#/rockcraft.yaml##' \
+              | jq -R '{path: ., name: (split("/")[-1])}' \
+              | jq -cs .
+          )
+
+          echo "rocks=$rocks" >> "$GITHUB_OUTPUT"

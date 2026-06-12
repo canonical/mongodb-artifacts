@@ -1,0 +1,151 @@
+name: Publish artifacts
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - 8-24.04
+  workflow_dispatch:
+
+env:
+  # Store channel the rocks stage their snaps from. Each rock stages the snap
+  # of the same name, so the rock build below picks up the revision published
+  # in this same run, once it is live on the channel.
+  CHANNEL: 8/edge
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+
+  discover-snaps:
+    uses: ./.github/workflows/snaps-discover.yaml
+
+  # 1. Record the revision currently live on the store before publishing, for
+  #    every snap that has a matching rock (same name). The wait step uses this
+  #    to tell when the new revision has propagated.
+  current-snap-revisions:
+    name: Snapshot current snap revisions
+    needs:
+      - discover-rocks
+      - discover-snaps
+    runs-on: ubuntu-latest
+    outputs:
+      current-revisions: ${{ steps.current-revisions.outputs.current-revisions }}
+    env:
+      ROCKS: ${{ needs.discover-rocks.outputs.rocks }}
+      SNAPS: ${{ needs.discover-snaps.outputs.snaps }}
+    steps:
+      - id: current-revisions
+        run: |
+          # Identify snaps that back rocks by matching names
+          names=$(jq -nr --argjson rocks "$ROCKS" --argjson snaps "$SNAPS" '
+            [$rocks[].name] as $rock_names
+            | [$snaps[].name | select(. as $snap_name | $rock_names | index($snap_name))]
+            | .[]')
+
+          result='{}'
+          for snap in $names; do
+            revisions=$(curl -s -H 'Snap-Device-Series: 16' \
+              "https://api.snapcraft.io/v2/snaps/info/${snap}" \
+              | jq -c '[.["channel-map"][]?
+                         | select(.channel.name == "'"$CHANNEL"'")
+                         | {(.channel.architecture): .revision}] | add // {}')
+
+            # `revisions` looks like {"amd64":2,"arm64":1}
+            echo "Current ${snap} on ${CHANNEL}: ${revisions}"
+            result=$(jq -c --arg s "$snap" --argjson r "$revisions" '. + {($s): $r}' <<<"$result")
+          done
+          echo "current-revisions=${result}" >> "$GITHUB_OUTPUT"
+
+  # 2. Build and publish all snaps to the channel first.
+  publish-snaps:
+    name: Publish snaps
+    needs: current-snap-revisions
+    uses: ./.github/workflows/snaps-publish.yaml
+    secrets: inherit
+    permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
+      contents: write  # Needed to create git tags
+
+
+  # 3. Wait until every snap that backs a rock has a newer revision live on the
+  #    channel, for every architecture the rocks are built for.
+  wait-for-snap-revision:
+    name: Wait for new snap revisions
+    needs:
+      - current-snap-revisions
+      - publish-snaps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CURRENT_REVISIONS: ${{ needs.current-snap-revisions.outputs.current-revisions }}
+    steps:
+      - name: Poll store until newer revisions appear
+        run: |
+          snaps=$(jq -r 'keys[]' <<<"$CURRENT_REVISIONS")
+          if [ -z "$snaps" ]; then
+            echo "No snap-backed rocks to wait for; nothing to do."
+            exit 0
+          fi
+
+          archs="amd64 arm64"
+          pending=$(
+            for snap in $snaps; do
+              for arch in $archs; do
+                echo "${snap} ${arch}"
+              done
+            done
+          )
+
+          for i in $(seq 1 60); do
+            next_pending=""
+            status=""
+            pending_snaps=$(awk '{print $1}' <<<"$pending" | sort -u)
+            for snap in $pending_snaps; do
+              current=$(curl -s -H 'Snap-Device-Series: 16' \
+                "https://api.snapcraft.io/v2/snaps/info/${snap}" \
+                | jq -c '[.["channel-map"][]?
+                           | select(.channel.name == "'"$CHANNEL"'")
+                           | {(.channel.architecture): .revision}] | add // {}')
+              # `current` looks like {"amd64":2,"arm64":1}
+
+              snap_status=""
+              pending_archs=$(awk -v snap="$snap" '$1 == snap {print $2}' <<<"$pending")
+              for arch in $pending_archs; do
+                previous=$(jq -r --arg s "$snap" --arg arch "$arch" '.[$s][$arch] // 0' <<<"$CURRENT_REVISIONS")
+                now=$(jq -r --arg arch "$arch" '.[$arch] // 0' <<<"$current")
+                if [ "$now" -le "$previous" ]; then
+                  next_pending="${next_pending}${snap} ${arch}"$'\n'
+                  snap_status="${snap_status} ${arch}:${now}<=${previous}"
+                else
+                  snap_status="${snap_status} ${arch}:${now}>${previous}"
+                fi
+              done
+              status="${status} ${snap}={${snap_status# }}"
+            done
+            if [ -z "$next_pending" ]; then
+              echo "All new revisions live on ${CHANNEL}:${status}"
+              exit 0
+            fi
+
+            pending="$next_pending"
+            echo "Attempt ${i}: still waiting on ${CHANNEL}:${status}; retrying in 30s"
+            sleep 30
+          done
+          echo "Timed out waiting for new snap revisions on ${CHANNEL}"
+          exit 1
+
+  # 4. Build, test, scan and publish the rocks. Publish only happens if build,
+  #    test and Trivy scan all pass (inside rocks-publish.yaml).
+  publish-rock:
+    name: Build, test and publish rocks
+    needs: wait-for-snap-revision
+    uses: ./.github/workflows/rocks-publish.yaml
+    secrets: inherit
+    permissions:
+      actions: read  # Needed for GitHub API call to get workflow version
+      packages: write  # Needed to publish to GitHub Container Registry
+      contents: write  # Needed to create git tags

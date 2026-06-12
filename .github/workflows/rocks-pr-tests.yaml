@@ -1,0 +1,103 @@
+name: Rock tests on PR
+
+on:
+  workflow_call:
+    inputs:
+      snap-channel:
+        description: Snap Store channel the rocks should stage snaps from.
+        required: true
+        type: string
+
+jobs:
+  discover-rocks:
+    uses: ./.github/workflows/rocks-discover.yaml
+
+  test-rocks:
+    name: Build and test rock | ${{ matrix.rock.name }} | ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    needs: discover-rocks
+    strategy:
+      fail-fast: false
+      matrix:
+        rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
+        runner:
+          - ubuntu-24.04       # amd64
+          - ubuntu-24.04-arm   # arm64
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install required dependencies
+        run: |
+          sudo snap install rockcraft --classic
+          sudo snap install yq
+
+      - name: Point rock stage snaps at PR branch
+        env:
+          ROCK_NAME: ${{ matrix.rock.name }}
+          ROCKCRAFT_FILE: ${{ matrix.rock.path }}/rockcraft.yaml
+          SNAP_CHANNEL: ${{ inputs.snap-channel }}
+        run: |
+          # Check that the rockcraft.yaml has stage snaps for this rock pointing at the expected channel, e.g. "mongodb-server-sharded/8/edge"
+          if ! yq \
+              '.parts[] | select(has("stage-snaps")) | .["stage-snaps"][] | select(test("^" + strenv(ROCK_NAME) + "/8/edge$"))' \
+              "${ROCKCRAFT_FILE}" | grep -q .; then
+            echo "No ${ROCK_NAME}/8/edge stage snap channel found in ${ROCKCRAFT_FILE}"
+            exit 1
+          fi
+
+          # Rewrite rockcraft.yaml to point stage snaps at the PR snap channel. For example,
+          # "mongodb-server-sharded/8/edge" becomes "mongodb-server-sharded/8/edge/pr-123".
+          yq -i \
+            '(.parts[] | select(has("stage-snaps")) | .["stage-snaps"][]) |= sub("/8/edge$"; "/" + strenv(SNAP_CHANNEL))' \
+            "${ROCKCRAFT_FILE}"
+
+          git diff -- "${ROCKCRAFT_FILE}"
+
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v0.1.2
+
+      - name: Run spread tests
+        working-directory: ${{ matrix.rock.path }}
+        run: |
+          if [ ! -f spread.yaml ]; then
+            echo "No spread.yaml in ${{ matrix.rock.path }}; failing."
+            exit 1
+          fi
+          rockcraft test
+
+      - name: Rockcraft logs
+        if: ${{ success() || failure() }}
+        run: cat ~/.local/state/rockcraft/log/* || true
+
+      - name: Pack rock for Trivy if needed
+        run: |
+          ROCK_FILE=$(find "${{ matrix.rock.path }}" -maxdepth 1 -type f -name '*.rock' | head -n1)
+          if [ -z "$ROCK_FILE" ]; then
+            echo "No .rock package found after tests; packing one for Trivy."
+            (cd "${{ matrix.rock.path }}" && rockcraft pack)
+          fi
+
+      - name: Upload rock for Trivy
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rock.name }}-${{ matrix.runner }}
+          path: ${{ matrix.rock.path }}/*.rock
+          if-no-files-found: error
+
+  scan-rocks:
+    name: Trivy scan
+    needs:
+      - discover-rocks
+      - test-rocks
+    uses: ./.github/workflows/rocks-scan.yaml
+    with:
+      rocks: ${{ needs.discover-rocks.outputs.rocks }}
+      artifact-suffixes: '["ubuntu-24.04","ubuntu-24.04-arm"]'
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
