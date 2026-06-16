@@ -110,7 +110,6 @@ parts:
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
-      usr/share/doc/logrotate/copyright: licenses/COPYRIGHT-logrotate
 
   entry:
     plugin: dump

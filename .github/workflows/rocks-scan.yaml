@@ -6,26 +6,40 @@ on:
       rocks:
         required: true
         type: string
-      artifact-suffixes:
-        default: '[""]'
+      artifact-prefix:
+        default: packed-rock
         required: false
         type: string
 
 jobs:
   scan:
-    name: Trivy scan | ${{ matrix.rock.name }}${{ matrix.artifact-suffix == '' && '' || format(' | {0}', matrix.artifact-suffix) }}
+    name: Trivy scan | ${{ matrix.rock.name }} | ${{ matrix.platform }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         rock: ${{ fromJSON(inputs.rocks) }}
-        artifact-suffix: ${{ fromJSON(inputs.artifact-suffixes) }}
+        platform:
+          - amd64
+          - arm64
     permissions:
       actions: read
       contents: read
+      security-events: write  # Required for uploading Trivy SARIF results
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
+
+      - name: Prepare scan metadata
+        id: scan-metadata
+        env:
+          ARTIFACT_PREFIX: ${{ inputs.artifact-prefix }}
+          PLATFORM: ${{ matrix.platform }}
+          ROCK_NAME: ${{ matrix.rock.name }}
+        run: |
+          echo "artifact_pattern=${ARTIFACT_PREFIX}*${PLATFORM}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${PLATFORM}" >> "$GITHUB_OUTPUT"
+          echo "scan_suffix=${PLATFORM}" >> "$GITHUB_OUTPUT"
 
       - name: Install required dependencies
         run: |
@@ -35,7 +49,7 @@ jobs:
       - name: Download built rock
         uses: actions/download-artifact@v4
         with:
-          pattern: ${{ matrix.artifact-suffix == '' && format('{0}-*', matrix.rock.name) || format('{0}-{1}', matrix.rock.name, matrix.artifact-suffix) }}
+          pattern: ${{ steps.scan-metadata.outputs.artifact_pattern }}
           merge-multiple: true
 
       - name: Import locally
@@ -47,7 +61,7 @@ jobs:
           fi
 
           NAME=$(yq -r '.name' "${{ matrix.rock.path }}/rockcraft.yaml")
-          IMAGE_TAG="${{ matrix.artifact-suffix == '' && 'test' || matrix.artifact-suffix }}"
+          IMAGE_TAG="${{ steps.scan-metadata.outputs.image_tag }}"
           IMAGE_REF="trivy/${NAME}:${IMAGE_TAG}"
 
           sudo rockcraft.skopeo --insecure-policy \
@@ -63,21 +77,21 @@ jobs:
         with:
           image-ref: ${{ env.IMAGE_REF }}
           format: sarif
-          output: trivy-results-${{ matrix.rock.name }}-${{ matrix.artifact-suffix == '' && 'scan' || matrix.artifact-suffix }}.sarif
+          output: trivy-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sarif
           severity: MEDIUM,HIGH,CRITICAL
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: trivy-results-${{ matrix.rock.name }}-${{ matrix.artifact-suffix == '' && 'scan' || matrix.artifact-suffix }}.sarif
+          sarif_file: trivy-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sarif
 
       - name: Generate SBOM
         uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: image
           format: spdx-json
-          output: dependency-results-${{ matrix.rock.name }}-${{ matrix.artifact-suffix == '' && 'scan' || matrix.artifact-suffix }}.sbom.json
+          output: dependency-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sbom.json
           image-ref: ${{ env.IMAGE_REF }}
           github-pat: ${{ secrets.GITHUB_TOKEN }}
           severity: MEDIUM,HIGH,CRITICAL
@@ -86,6 +100,6 @@ jobs:
       - name: Upload trivy report as a Github artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-sbom-report-${{ matrix.rock.name }}-${{ matrix.artifact-suffix == '' && 'scan' || matrix.artifact-suffix }}
-          path: dependency-results-${{ matrix.rock.name }}-${{ matrix.artifact-suffix == '' && 'scan' || matrix.artifact-suffix }}.sbom.json
+          name: trivy-sbom-report-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}
+          path: dependency-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sbom.json
           retention-days: 90

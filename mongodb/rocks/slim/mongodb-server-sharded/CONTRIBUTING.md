@@ -6,6 +6,21 @@ sudo snap install rockcraft --classic
 sudo snap install docker
 ```
 
+By default, Docker is only accessible with root privileges (sudo). We want to be able to use Docker commands as a regular user:
+
+```bash
+sudo addgroup --system docker
+sudo adduser $USER docker
+newgrp docker
+```
+
+Restart Docker
+
+```bash
+sudo snap disable docker
+sudo snap enable docker
+```
+
 ## Clone repository
 ```bash
 git clone https://github.com/canonical/mongodb-artifacts.git

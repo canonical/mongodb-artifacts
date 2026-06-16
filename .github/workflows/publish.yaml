@@ -38,27 +38,10 @@ jobs:
       ROCKS: ${{ needs.discover-rocks.outputs.rocks }}
       SNAPS: ${{ needs.discover-snaps.outputs.snaps }}
     steps:
+      - uses: actions/checkout@v6
+
       - id: current-revisions
-        run: |
-          # Identify snaps that back rocks by matching names
-          names=$(jq -nr --argjson rocks "$ROCKS" --argjson snaps "$SNAPS" '
-            [$rocks[].name] as $rock_names
-            | [$snaps[].name | select(. as $snap_name | $rock_names | index($snap_name))]
-            | .[]')
-
-          result='{}'
-          for snap in $names; do
-            revisions=$(curl -s -H 'Snap-Device-Series: 16' \
-              "https://api.snapcraft.io/v2/snaps/info/${snap}" \
-              | jq -c '[.["channel-map"][]?
-                         | select(.channel.name == "'"$CHANNEL"'")
-                         | {(.channel.architecture): .revision}] | add // {}')
-
-            # `revisions` looks like {"amd64":2,"arm64":1}
-            echo "Current ${snap} on ${CHANNEL}: ${revisions}"
-            result=$(jq -c --arg s "$snap" --argjson r "$revisions" '. + {($s): $r}' <<<"$result")
-          done
-          echo "current-revisions=${result}" >> "$GITHUB_OUTPUT"
+        run: .github/scripts/current-snap-revisions.sh
 
   # 2. Build and publish all snaps to the channel first.
   publish-snaps:
@@ -83,60 +66,10 @@ jobs:
     env:
       CURRENT_REVISIONS: ${{ needs.current-snap-revisions.outputs.current-revisions }}
     steps:
+      - uses: actions/checkout@v6
+
       - name: Poll store until newer revisions appear
-        run: |
-          snaps=$(jq -r 'keys[]' <<<"$CURRENT_REVISIONS")
-          if [ -z "$snaps" ]; then
-            echo "No snap-backed rocks to wait for; nothing to do."
-            exit 0
-          fi
-
-          archs="amd64 arm64"
-          pending=$(
-            for snap in $snaps; do
-              for arch in $archs; do
-                echo "${snap} ${arch}"
-              done
-            done
-          )
-
-          for i in $(seq 1 60); do
-            next_pending=""
-            status=""
-            pending_snaps=$(awk '{print $1}' <<<"$pending" | sort -u)
-            for snap in $pending_snaps; do
-              current=$(curl -s -H 'Snap-Device-Series: 16' \
-                "https://api.snapcraft.io/v2/snaps/info/${snap}" \
-                | jq -c '[.["channel-map"][]?
-                           | select(.channel.name == "'"$CHANNEL"'")
-                           | {(.channel.architecture): .revision}] | add // {}')
-              # `current` looks like {"amd64":2,"arm64":1}
-
-              snap_status=""
-              pending_archs=$(awk -v snap="$snap" '$1 == snap {print $2}' <<<"$pending")
-              for arch in $pending_archs; do
-                previous=$(jq -r --arg s "$snap" --arg arch "$arch" '.[$s][$arch] // 0' <<<"$CURRENT_REVISIONS")
-                now=$(jq -r --arg arch "$arch" '.[$arch] // 0' <<<"$current")
-                if [ "$now" -le "$previous" ]; then
-                  next_pending="${next_pending}${snap} ${arch}"$'\n'
-                  snap_status="${snap_status} ${arch}:${now}<=${previous}"
-                else
-                  snap_status="${snap_status} ${arch}:${now}>${previous}"
-                fi
-              done
-              status="${status} ${snap}={${snap_status# }}"
-            done
-            if [ -z "$next_pending" ]; then
-              echo "All new revisions live on ${CHANNEL}:${status}"
-              exit 0
-            fi
-
-            pending="$next_pending"
-            echo "Attempt ${i}: still waiting on ${CHANNEL}:${status}; retrying in 30s"
-            sleep 30
-          done
-          echo "Timed out waiting for new snap revisions on ${CHANNEL}"
-          exit 1
+        run: .github/scripts/wait-for-snap-revisions.sh
 
   # 4. Build, test, scan and publish the rocks. Publish only happens if build,
   #    test and Trivy scan all pass (inside rocks-publish.yaml).
