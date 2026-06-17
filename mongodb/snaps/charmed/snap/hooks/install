@@ -57,6 +57,7 @@ cp -r ${SNAP}/vault.hcl ${VAULT_CONFIG_FILE}
 
 # mongod.conf default values are not consistent with the snap directory system.
 yq -i ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
+yq -i "del(.processManagement.pidFilePath)" ${MONGO_CONFIG_FILE}
 yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
 yq -i ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
 

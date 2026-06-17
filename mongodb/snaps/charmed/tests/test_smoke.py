@@ -1,9 +1,15 @@
-import base64
-import os
 import yaml
 import subprocess
 import time
 import pytest
+
+SERVICES_TO_TEST = (
+    "mongod",
+    "mongos",
+    "mongodb-exporter",
+    "pbm-agent",
+    "vault-agent",
+)
 
 
 def test_install():
@@ -54,22 +60,58 @@ def _current_status(name, app):
     raise AssertionError(f"{name}.{app} not found in:\n{result.stdout}")
 
 
+def _daemon_apps(snapcraft):
+    return {app for app, data in snapcraft["apps"].items() if data.get("daemon")}
+
+
+def _set_snap_config(name, config):
+    subprocess.run(
+        [
+            "sudo",
+            "snap",
+            "set",
+            name,
+            *[f"{key}={value}" for key, value in config.items()],
+        ],
+        check=True,
+    )
+
+
 @pytest.mark.run(after="test_all_apps")
 def test_all_services():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
+    name = snapcraft["name"]
 
-        for app, data in snapcraft["apps"].items():
-            if data.get("daemon"):
-                print(f"\nTesting {snapcraft['name']}.{app} service....")
-                subprocess.run(
-                    f"sudo snap start {snapcraft['name']}.{app}".split(), check=True
-                )
-                time.sleep(5)
-                status = _current_status(snapcraft["name"], app)
-                subprocess.run(f"sudo snap stop {snapcraft['name']}.{app}".split())
+    daemon_apps = _daemon_apps(snapcraft)
+    services_to_test = set(SERVICES_TO_TEST)
 
-                assert status == "active"
+    assert services_to_test == daemon_apps, (
+        "SERVICES_TO_TEST must match daemon apps in snapcraft.yaml. "
+        f"Missing from test list: {sorted(daemon_apps - services_to_test)}. "
+        f"Not daemon apps: {sorted(services_to_test - daemon_apps)}."
+    )
+
+    _set_snap_config(
+        name,
+        {
+            "mongod-args": "--configsvr --replSet configrs --port 27019 --bind_ip 127.0.0.1",
+            "mongos-args": "--configdb configrs/127.0.0.1:27019 --bind_ip 127.0.0.1 --port 27018",
+            "monitor-uri": "mongodb://127.0.0.1:27019",
+            "pbm-uri": "mongodb://127.0.0.1:27019",
+        },
+    )
+
+    try:
+        for app in SERVICES_TO_TEST:
+            print(f"\nTesting {name}.{app} service....")
+            subprocess.run(f"sudo snap start {name}.{app}".split(), check=True)
+            time.sleep(5)
+            status = _current_status(name, app)
+            assert status == "active", f"{name}.{app} is {status!r}, expected 'active'"
+    finally:
+        for app in SERVICES_TO_TEST:
+            subprocess.run(f"sudo snap stop {name}.{app}".split())
 
 
 @pytest.mark.run(after="test_all_services")
