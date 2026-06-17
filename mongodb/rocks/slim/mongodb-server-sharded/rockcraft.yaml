@@ -22,6 +22,8 @@ services:
     startup: disabled
     command: "/bin/bash /bin/start-mongos.sh"
 
+run-user: _daemon_
+
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
@@ -32,8 +34,6 @@ parts:
     stage-snaps:
       - mongodb-server-sharded/8/edge
       - yq
-    overlay-packages:
-      - ca-certificates
     stage-packages:
       - libssh-4
       - libbrotli1
@@ -42,9 +42,6 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
-    override-overlay: |
-      groupadd -g  584788 mongodb
-      useradd -M -r -g mongodb -u 584788 mongodb
     override-prime: |
       craftctl default
 
@@ -76,15 +73,22 @@ parts:
 
       rm -f "$CRAFT_PRIME/etc/mongod.conf"
 
-      chown -R 584788:584788 "${conf}"
+      chown -R 584792:584792 "${conf}"
 
-      # Data/log dirs are root-owned in the base; services run as uid 584788.
-      chown -R 584788:584788 \
+      install -d -o 584792 -g 584792 -m 770 \
+        var/lib/mongodb \
+        var/log/mongodb \
+        etc/mongod \
+        run
+
+
+      # Data/log dirs are root-owned in the base; services run as _daemon_.
+      chown -R 584792:584792 \
         "$CRAFT_PRIME/var/lib/mongodb" "$CRAFT_PRIME/var/log/mongodb"
 
       # The PID files are stored in `/var/run`
       mkdir -p "$CRAFT_PRIME/run"
-      chown 584788:584788 "$CRAFT_PRIME/run"
+      chown 584792:584792 "$CRAFT_PRIME/run"
 
       # enable security monitoring
       rocks=usr/share/rocks/

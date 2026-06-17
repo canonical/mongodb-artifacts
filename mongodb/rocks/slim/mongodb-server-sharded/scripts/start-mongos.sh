@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start mongos as the unprivileged mongodb user.
+# Start mongos
 #
 # Extra arguments can be supplied through the MONGOS_ARGS environment variable,
 # for example:
@@ -15,5 +15,4 @@ if [ ! -e "${KEYFILE}" ]; then
   generate_keyfile
 fi
 
-exec /usr/bin/setpriv --clear-groups --reuid mongodb --regid mongodb -- \
-  /usr/bin/mongos --config /etc/mongod/mongos.conf ${MONGOS_ARGS:-} "$@"
+exec /usr/bin/mongos --config /etc/mongod/mongos.conf ${MONGOS_ARGS:-} "$@"

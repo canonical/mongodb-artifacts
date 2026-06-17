@@ -29,7 +29,7 @@ The rock defines two services:
 Given that a single container hosts a single role, the `mongod` service starts
 automatically while `mongos` is started on demand.
 
-Both services run as the unprivileged `mongodb` user (uid `584788`) and read the configuration files found into the image:
+Both services run as the unprivileged `_daemon_` user (uid/gid `584792:584792`) and read the configuration files found into the image:
 
 - `mongod` &rarr; `/etc/mongod/mongod.conf` (data in `/var/lib/mongodb`)
 - `mongos` &rarr; `/etc/mongod/mongos.conf`
@@ -44,6 +44,21 @@ To get started with the rock, first install Docker:
 
 ```bash
 sudo snap install docker
+```
+
+By default, Docker is only accessible with root privileges (sudo). We want to be able to use Docker commands as a regular user:
+
+```bash
+sudo addgroup --system docker
+sudo adduser $USER docker
+newgrp docker
+```
+
+Restart Docker
+
+```bash
+sudo snap disable docker
+sudo snap enable docker
 ```
 
 ## Obtaining the rock
@@ -89,7 +104,7 @@ MongoDB sharded clusters use a shared keyfile for internal authentication betwee
 shard servers, and query routers (`mongos`). Every member must use the same keyfile.
 
 Each container automatically generates a keyfile at `/etc/mongod/mongodb-keyfile` (mode `400`,
-owned by the `mongodb` user, uid `584788`) the first time it starts, unless a keyfile is already
+owned by `_daemon_`, uid/gid `584792:584792`) the first time it starts, unless a keyfile is already
 present at that path.
 
 In this walkthrough we let the config server generate the key, read it back with `get-keyfile`,
@@ -322,8 +337,8 @@ docker volume rm configsvr-data shard1-data
 ## Managing the keyfile
 
 The image provides two commands for inspecting and changing the internal-auth keyfile of a
-running container. Run them as the default `docker exec` user (root), which can read and
-rewrite the `400` keyfile owned by uid `584788`:
+running container. They run as the image default `_daemon_` user, which owns the `400`
+keyfile in rootless deployments:
 
 | Command | Behaviour |
 | ------- | --------- |

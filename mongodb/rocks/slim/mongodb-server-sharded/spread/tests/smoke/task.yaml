@@ -23,7 +23,7 @@ execute: |
     exit 1
   fi
 
-  # A default container runs mongod, which stays up and accepts connections.
+  # A default _daemon_ container runs mongod, which stays up and accepts connections.
   echo "=== Testing mongod connectivity ==="
   docker run -d --name "$CONTAINER" "$IMAGE"
   ok=0
@@ -39,7 +39,7 @@ execute: |
 
   echo "=== Testing keyfile is auto-generated with correct ownership/mode ==="
   permissions="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
-  test "$permissions" = "400 584788 584788"
+  test "$permissions" = "400 584792 584792"
 
   echo "=== Testing generated keyfile can be copied to another container ==="
   keyfile_content="$(docker exec "$CONTAINER" get-keyfile)"
@@ -48,7 +48,7 @@ execute: |
   stored="$(docker exec "$KEY_CONSUMER" get-keyfile)"
   test "$stored" = "$keyfile_content"
   permissions="$(docker exec "$KEY_CONSUMER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
-  test "$permissions" = "400 584788 584788"
+  test "$permissions" = "400 584792 584792"
 
   echo "=== Testing mongod service state ==="
   mongod_state="$(docker exec "$CONTAINER" pebble services mongod | awk '$1 == "mongod" {print $3}')"
