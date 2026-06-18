@@ -125,13 +125,13 @@ docker run -d \
   "$IMAGE"
 ```
 
-#### Read the generated keyfile
+#### Verify the generated keyfile
 
-Capture the key the config server just generated into a shell variable, so you can
-apply it to the other members:
+Check that the config server generated a keyfile that can be copied to the other
+members:
 
 ```bash
-KEYFILE_CONTENT="$(docker exec configsvr get-keyfile)"
+docker exec configsvr get-keyfile >/dev/null
 ```
 
 #### Initialize the config server replica set
@@ -195,7 +195,7 @@ On first start this container generated its *own* keyfile. Replace it with the c
 and restart so `mongod` reloads it (the keyfile is only read at startup):
 
 ```bash
-docker exec shard1 set-keyfile "$KEYFILE_CONTENT"
+docker exec configsvr get-keyfile | docker exec -i shard1 set-keyfile
 docker restart shard1
 ```
 
@@ -241,7 +241,7 @@ Like the shard, this container generated its own keyfile on first start. Apply t
 key and restart so it can authenticate to the config server:
 
 ```bash
-docker exec mongos set-keyfile "$KEYFILE_CONTENT"
+docker exec configsvr get-keyfile | docker exec -i mongos set-keyfile
 docker restart mongos
 ```
 
@@ -344,12 +344,19 @@ keyfile in rootless deployments:
 | ------- | --------- |
 | `get-keyfile` | Print the current keyfile (`/etc/mongod/mongodb-keyfile`) to standard output. |
 | `set-keyfile <key>` | Store `<key>` as the keyfile contents. |
+| `set-keyfile` | Store keyfile contents read from standard input. |
 
 For example, to copy the auto-generated key from one container into another so they share the same key:
 
 ```bash
 key="$(docker exec configsvr get-keyfile)"
 docker exec shard1 set-keyfile "$key"
+```
+
+Or pipe it directly between containers:
+
+```bash
+docker exec configsvr get-keyfile | docker exec -i shard1 set-keyfile
 ```
 
 Notes:
