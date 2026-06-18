@@ -125,15 +125,6 @@ docker run -d \
   "$IMAGE"
 ```
 
-#### Verify the generated keyfile
-
-Check that the config server generated a keyfile that can be copied to the other
-members:
-
-```bash
-docker exec configsvr get-keyfile >/dev/null
-```
-
 #### Initialize the config server replica set
 
 Connect to the config server:
@@ -162,8 +153,7 @@ rs.status()
 
 #### Create an admin user
 
-When using a keyfile, authorization is enabled. Use the localhost exception to create an
-admin user before running cluster administration commands:
+Create an admin user:
 
 ```javascript
 use admin
