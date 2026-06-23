@@ -44,7 +44,8 @@ jobs:
       - name: Install required dependencies
         run: |
           sudo snap install rockcraft --classic --edge
-          sudo snap install yq
+          sudo apt-get update
+          sudo apt-get install --yes yq
 
       - name: Download built rock
         uses: actions/download-artifact@v4

@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install yq
-        run: sudo snap install yq
+        run: sudo apt-get update && sudo apt-get install --yes yq
 
       - name: Point rock stage snaps at PR branch
         env:
