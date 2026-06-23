@@ -22,6 +22,10 @@ runs:
     - name: Set up LXD
       uses: canonical/setup-lxd@v0.1.2
 
+    - name: Allow runner to use LXD
+      shell: bash
+      run: sudo usermod --append --groups lxd "$USER"
+
     # `rockcraft test` packs the rock and runs the spread suites against it.
     # Fail if no spread.yaml is found.
     - name: Run spread tests
@@ -32,7 +36,7 @@ runs:
           echo "No spread.yaml in ${{ inputs.rock-path }}; failing."
           exit 1
         fi
-        rockcraft test
+        sg lxd -c "rockcraft test"
 
     - name: Rockcraft logs
       if: ${{ success() || failure() }}
