@@ -7,7 +7,7 @@ concurrency:
 on:
   push:
     branches:
-      - 8-24.04
+      - 8-24.04/edge
   workflow_dispatch:
 
 env:
@@ -26,7 +26,7 @@ jobs:
   # 1. Record the revision currently live on the store before publishing, for
   #    every snap that has a matching rock (same name). The wait step uses this
   #    to tell when the new revision has propagated.
-  current-snap-revisions:
+  snapshot-current-snap-revisions:
     name: Snapshot current snap revisions
     needs:
       - discover-rocks
@@ -37,16 +37,20 @@ jobs:
     env:
       ROCKS: ${{ needs.discover-rocks.outputs.rocks }}
       SNAPS: ${{ needs.discover-snaps.outputs.snaps }}
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
       - id: current-revisions
-        run: .github/scripts/current-snap-revisions.sh
+        run: .github/scripts/snapshot-current-snap-revisions.sh
 
   # 2. Build and publish all snaps to the channel first.
   publish-snaps:
     name: Publish snaps
-    needs: current-snap-revisions
+    needs: snapshot-current-snap-revisions
     uses: ./.github/workflows/snaps-publish.yaml
     secrets: inherit
     permissions:
@@ -59,14 +63,18 @@ jobs:
   wait-for-snap-revision:
     name: Wait for new snap revisions
     needs:
-      - current-snap-revisions
+      - snapshot-current-snap-revisions
       - publish-snaps
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      CURRENT_REVISIONS: ${{ needs.current-snap-revisions.outputs.current-revisions }}
+      CURRENT_REVISIONS: ${{ needs.snapshot-current-snap-revisions.outputs.current-revisions }}
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
 
       - name: Poll store until newer revisions appear
         run: .github/scripts/wait-for-snap-revisions.sh

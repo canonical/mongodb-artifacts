@@ -33,7 +33,6 @@ parts:
     plugin: nil
     stage-snaps:
       - mongodb-server-sharded/8/edge
-      - yq
     stage-packages:
       - libssh-4
       - libbrotli1
@@ -42,6 +41,8 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
+    build-packages:
+      - yq
     override-prime: |
       craftctl default
 

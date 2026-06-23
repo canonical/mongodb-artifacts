@@ -5,6 +5,8 @@ set -euo pipefail
 # It is intended for GitHub Actions workflows where we need to know the current
 # channel revisions before triggering a promotion or release.
 
+source .github/scripts/snapcraft-revisions-lib.sh
+
 # Identify snaps that back rocks by matching names.
 names=$(jq -nr --argjson rocks "$ROCKS" --argjson snaps "$SNAPS" '
   [$rocks[].name] as $rock_names
@@ -13,12 +15,8 @@ names=$(jq -nr --argjson rocks "$ROCKS" --argjson snaps "$SNAPS" '
 
 result='{}'
 for snap in $names; do
-  # Query Snapcraft for the snap metadata and extract the channel map for the target channel.
-  revisions=$(curl -s -H 'Snap-Device-Series: 16' \
-    "https://api.snapcraft.io/v2/snaps/info/${snap}" \
-    | jq -c '[.["channel-map"][]?
-               | select(.channel.name == "'"$CHANNEL"'")
-               | {(.channel.architecture): .revision}] | add // {}')
+  # Query Snapcraft for the current revisions on the target channel.
+  revisions=$(get_live_snap_revisions_by_arch "$snap")
 
   # `revisions` looks like {"amd64":2,"arm64":1}
   echo "Current ${snap} on ${CHANNEL}: ${revisions}"

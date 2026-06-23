@@ -5,6 +5,8 @@ set -euo pipefail
 # on the target channel, compared with the revisions previously recorded in
 # CURRENT_REVISIONS.
 
+source .github/scripts/snapcraft-revisions-lib.sh
+
 snaps=$(jq -r 'keys[]' <<<"$CURRENT_REVISIONS")
 if [ -z "$snaps" ]; then
   echo "No snap-backed rocks to wait for; nothing to do."
@@ -28,11 +30,7 @@ for i in $(seq 1 60); do
   pending_snaps=$(awk '{print $1}' <<<"$pending" | sort -u)
   for snap in $pending_snaps; do
     # Fetch the current live revision state for this snap/channel.
-    current=$(curl -s -H 'Snap-Device-Series: 16' \
-      "https://api.snapcraft.io/v2/snaps/info/${snap}" \
-      | jq -c '[.["channel-map"][]?
-                 | select(.channel.name == "'"$CHANNEL"'")
-                 | {(.channel.architecture): .revision}] | add // {}')
+    current=$(get_live_snap_revisions_by_arch "$snap")
 
     snap_status=""
     pending_archs=$(awk -v snap="$snap" '$1 == snap {print $2}' <<<"$pending")
