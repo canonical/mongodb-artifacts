@@ -44,8 +44,6 @@ jobs:
       - name: Install required dependencies
         run: |
           sudo snap install rockcraft --classic --edge
-          sudo apt-get update
-          sudo apt-get install --yes yq
 
       - name: Download built rock
         uses: actions/download-artifact@v4
@@ -61,7 +59,7 @@ jobs:
             exit 1
           fi
 
-          NAME=$(yq -r '.name' "${{ matrix.rock.path }}/rockcraft.yaml")
+          NAME="${{ matrix.rock.name }}"
           IMAGE_TAG="${{ steps.scan-metadata.outputs.image_tag }}"
           IMAGE_REF="trivy/${NAME}:${IMAGE_TAG}"
 

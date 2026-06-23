@@ -13,7 +13,7 @@ fi
 # Rewrite rockcraft.yaml to point stage snaps at the PR snap channel. For
 # example, "mongodb-server-sharded/8/edge" becomes
 # "mongodb-server-sharded/8/edge/pr-123".
-yq -yi \
+yq -Yi \
   '(.parts[] | select(has("stage-snaps")) | .["stage-snaps"][]) |= sub("/8/edge$"; "/" + env.SNAP_CHANNEL)' \
   "${ROCKCRAFT_FILE}"
 
