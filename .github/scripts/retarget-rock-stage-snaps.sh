@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+: "${ROCK_NAME:?ROCK_NAME must be set}"
+: "${SNAP_CHANNEL:?SNAP_CHANNEL must be set}"
+
 # Check that rockcraft.yaml has stage snaps for this rock pointing at the
 # expected channel, e.g. "mongodb-server-sharded/8/edge".
 if ! yq \
