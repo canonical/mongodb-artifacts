@@ -3,7 +3,7 @@
 name: mongodb-server-replicaset # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
 version: "8.0.10-4" # just for humans. Semantic versioning is recommended
-summary:  Replica set MongoDB server in a rock. # 79 char long summary
+summary: Replica set MongoDB server in a rock. # 79 char long summary
 description: |
   Replica set MongoDB server packages a replica set MongoDB topology,
   including mongod and administration tools.
