@@ -1,0 +1,68 @@
+summary: Smoke test - mongos starts, helper command and config are correct
+
+execute: |
+  set -euo pipefail
+
+  IMAGE=mongos:spreadtest
+  CONTAINER="${SPREAD_TASK//\//_}"
+
+  echo "=== Testing mongos PID and log file paths ==="
+  docker run --rm "$IMAGE" exec cat /etc/mongod/mongos.conf | grep -q '/var/run/mongos.pid'
+  docker run --rm "$IMAGE" exec cat /etc/mongod/mongos.conf | grep -q '/var/log/mongodb/mongos.log'
+
+  echo "=== Testing set-keyfile/get-keyfile ==="
+  # set-keyfile requires an explicit key value.
+  if docker run --rm "$IMAGE" exec set-keyfile; then
+    echo "set-keyfile succeeded without a key"
+    exit 1
+  fi
+
+  echo "=== Testing mongos service startup and keyfile generation ==="
+  docker run -d --name "$CONTAINER" \
+    -e MONGOS_ARGS="--configdb configrs/configsvr1:27019 --bind_ip 0.0.0.0" \
+    "$IMAGE"
+
+  keyfile_ready=0
+  for _ in $(seq 1 30); do
+    if docker exec "$CONTAINER" test -f /etc/mongod/mongodb-keyfile; then
+      keyfile_ready=1
+      break
+    fi
+    sleep 2
+  done
+  test "$keyfile_ready" -eq 1
+
+  permissions="$(docker exec "$CONTAINER" stat -c '%a %u %g' /etc/mongod/mongodb-keyfile)"
+  test "$permissions" = "400 584792 584792"
+
+  echo "=== Testing only the mongos service is defined ==="
+  service_names="$(docker exec "$CONTAINER" pebble services | awk 'NR > 1 {print $1}')"
+  test "$service_names" = "mongos"
+
+  mongos_active=0
+  for _ in $(seq 1 30); do
+    mongos_state="$(docker exec "$CONTAINER" pebble services mongos | awk '$1 == "mongos" {print $3}')"
+    if [ "$mongos_state" = "active" ]; then
+      mongos_active=1
+      break
+    fi
+    sleep 2
+  done
+  test "$mongos_active" -eq 1
+
+  echo "=== Testing set-keyfile/get-keyfile ==="
+  docker run --rm "$IMAGE" exec /bin/bash -c '
+    set -euo pipefail
+
+    set-keyfile test-key >/dev/null
+    test "$(get-keyfile)" = "test-key"
+  '
+  docker run --rm "$IMAGE" exec /bin/bash -c '
+    set -euo pipefail
+
+    set-keyfile test-key >/dev/null
+    test "$(stat -c "%a %u %g" /etc/mongod/mongodb-keyfile)" = "400 584792 584792"
+  '
+
+restore: |
+  docker rm -f "${SPREAD_TASK//\//_}" || true
