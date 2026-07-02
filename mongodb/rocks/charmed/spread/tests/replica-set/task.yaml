@@ -8,7 +8,7 @@ execute: |
   dump_debug() {
     set +e
 
-    log_dir="$SPREAD_PATH/spread-logs/replica-set"
+    log_dir="$(dirname "$CRAFT_ARTIFACT")/spread-logs/replica-set"
     mkdir -p "$log_dir"
 
     juju status --relations --storage -m concierge-microk8s:testing \
