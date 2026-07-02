@@ -108,8 +108,8 @@ suites:
         --no-wait \
         --destroy-storage \
         --no-prompt \
-        concierge-k8s:testing || true
-      juju kill-controller --no-prompt concierge-k8s || true
+        concierge-microk8s:testing || true
+      juju kill-controller --no-prompt concierge-microk8s || true
 
 exclude:
   - .git
