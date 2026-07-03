@@ -9,7 +9,6 @@ SERVICES_TO_TEST = (
     "mongos",
     "mongodb-exporter",
     "pbm-agent",
-    "vault-agent",
 )
 
 
