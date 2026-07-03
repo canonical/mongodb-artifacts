@@ -7,7 +7,7 @@ concurrency:
 on:
   push:
     branches:
-      - 8-transition
+      - 8-transition-24.04/edge
   workflow_dispatch:
 
 env:
