@@ -7,7 +7,7 @@ concurrency:
 on:
   push:
     branches:
-      - 6-22.04
+      - 6-22.04/edge
   workflow_dispatch:
 
 env:
