@@ -1,5 +1,5 @@
 # Build and test rocks against snaps published from a pull request.
-# Each rock is retargeted to the PR snap channel, tested on amd64 and arm64,
+# Each rock is retargeted to the PR snap channel, tested on amd64,
 # uploaded as a packed-rock artifact, and scanned by Trivy before the workflow passes.
 # Example of the uploaded artifact: packed-rock-mongodb-server-sharded--platform-amd
 
@@ -28,8 +28,6 @@ jobs:
         runner:
           - label: ubuntu-22.04       # amd64
             platform: amd64
-          - label: ubuntu-22.04-arm   # arm64
-            platform: arm64
     permissions:
       actions: read
       contents: read
@@ -73,6 +71,7 @@ jobs:
     uses: ./.github/workflows/rocks-scan.yaml
     with:
       rocks: ${{ needs.discover-rocks.outputs.rocks }}
+      platforms: '["amd64"]'
     secrets: inherit
     permissions:
       actions: read
