@@ -58,10 +58,10 @@ parts:
       chown -R 584792:584792 "${conf}"
 
       install -d -o 584792 -g 584792 -m 770 \
-        var/lib/mongodb \
-        var/log/mongodb \
-        etc/mongod \
-        run
+        "$CRAFT_PRIME/var/lib/mongodb" \
+        "$CRAFT_PRIME/var/log/mongodb" \
+        "$CRAFT_PRIME/etc/mongod" \
+        "$CRAFT_PRIME/run"
 
       # Data/log dirs are root-owned in the base; services run as _daemon_.
       chown -R 584792:584792 \
