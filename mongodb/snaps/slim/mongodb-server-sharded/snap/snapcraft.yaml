@@ -42,6 +42,16 @@ package-repositories:
     url: |
         https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
 
+plugs:
+  sys-fs-cgroup-system-slice:
+    interface: system-files
+    read:
+      - /sys/fs/cgroup/system.slice
+  mongosh-posix-mq:
+    interface: posix-mq
+    posix-mq: mongosh
+
+
 slots:
   logs:
     interface: content
@@ -49,6 +59,15 @@ slots:
       read:
         - $SNAP_COMMON/var/log/mongodb
         - $SNAP_COMMON/var/log/mongos
+  mongosh-posix-mq-provider:
+    interface: posix-mq
+    posix-mq: mongosh
+    path: /mongosh
+    permissions:
+      - read
+      - write
+      - create
+      - delete
 
 apps:
   get-keyfile:
@@ -64,6 +83,8 @@ apps:
     plugs:
       - network
       - system-observe
+      - sys-fs-cgroup-system-slice
+      - mongosh-posix-mq
   mongobridge:
     command: drop_priv.sh mongobridge
     environment:

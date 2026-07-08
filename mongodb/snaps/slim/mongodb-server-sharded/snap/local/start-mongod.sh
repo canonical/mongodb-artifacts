@@ -4,7 +4,6 @@ ulimit -SHf unlimited
 ulimit -SHt unlimited
 ulimit -SHv unlimited
 ulimit -SHm unlimited
-ulimit -Sl "$(ulimit -Hl)"
 ulimit -SHn 64000
 ulimit -SHu 64000
 
@@ -15,6 +14,7 @@ case "${SNAP_ARCH}" in
 esac
 
 export SASL_PATH="${SNAP}/usr/lib/${arch_triplet}/sasl2"
+export GSS_MECH_CONFIG="${SNAP_DATA}/etc/gss/mech"
 
 SNAP_ARGS="$(snapctl get mongod-args)"
 
