@@ -77,10 +77,23 @@ environment:
 apps:
   mongosh:
     command: drop_priv.sh mongosh
+    environment:
+      HOME: $SNAP_DATA/home
+      XDG_CACHE_HOME: $SNAP_DATA/home/.cache
+      XDG_CONFIG_HOME: $SNAP_DATA/home/.config
     plugs:
       - network
+      - system-observe
   mongobridge:
     command: drop_priv.sh mongobridge
+    environment:
+      SSL_CERT_FILE: $SNAP/etc/ssl/certs/ca-certificates.crt
+    plugs:
+      - hardware-observe
+      - network
+      - network-bind
+      - network-observe
+      - system-observe
   mongod:
     command: start-mongod.sh
     daemon: simple
@@ -88,8 +101,11 @@ apps:
     restart-condition: always
     restart-delay: 20s
     plugs:
+      - hardware-observe
       - network
       - network-bind
+      - network-observe
+      - system-observe
     slots:
       - logs
   mongodump:
@@ -100,16 +116,25 @@ apps:
   mongod-cli:
     command: drop_priv.sh mongod
     plugs:
+      - hardware-observe
       - network
       - network-bind
+      - network-observe
+      - system-observe
     slots:
       - logs
   mongoexport:
     command: drop_priv.sh mongoexport
+    plugs:
+      - network
   mongofiles:
     command: drop_priv.sh mongofiles
+    plugs:
+      - network
   mongoimport:
     command: drop_priv.sh mongoimport
+    plugs:
+      - network
   mongorestore:
     command: drop_priv.sh mongorestore
     plugs:
@@ -122,14 +147,21 @@ apps:
     restart-condition: always
     restart-delay: 20s
     plugs:
+      - hardware-observe
       - network
       - network-bind
+      - network-observe
+      - system-observe
     slots:
       - logs
   mongostat:
     command: drop_priv.sh mongostat
+    plugs:
+      - network
   mongotop:
     command: drop_priv.sh mongotop
+    plugs:
+      - network
   mongodb-exporter:
     daemon: simple
     install-mode: disable

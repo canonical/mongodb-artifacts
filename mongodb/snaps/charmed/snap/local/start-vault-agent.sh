@@ -4,7 +4,7 @@ ulimit -SHf unlimited
 ulimit -SHt unlimited
 ulimit -SHv unlimited
 ulimit -SHm unlimited
-ulimit -Sl unlimited
+ulimit -Sl "$(ulimit -Hl)"
 ulimit -SHn 64000
 ulimit -SHu 64000
 
