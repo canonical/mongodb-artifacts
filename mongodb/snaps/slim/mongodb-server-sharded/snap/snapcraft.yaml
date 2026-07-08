@@ -65,9 +65,6 @@ slots:
     path: /mongosh
     permissions:
       - read
-      - write
-      - create
-      - delete
 
 apps:
   get-keyfile:
