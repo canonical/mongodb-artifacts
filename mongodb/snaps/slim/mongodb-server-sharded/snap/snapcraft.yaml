@@ -43,10 +43,6 @@ package-repositories:
         https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
 
 plugs:
-  sys-fs-cgroup-system-slice:
-    interface: system-files
-    read:
-      - /sys/fs/cgroup/system.slice
   mongosh-posix-mq:
     interface: posix-mq
     posix-mq: mongosh
