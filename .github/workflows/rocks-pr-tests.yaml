@@ -71,6 +71,7 @@ jobs:
     uses: ./.github/workflows/rocks-scan.yaml
     with:
       rocks: ${{ needs.discover-rocks.outputs.rocks }}
+      artifact-prefix: packed-rock
       platforms: '["amd64"]'
     secrets: inherit
     permissions:
