@@ -41,12 +41,23 @@ package-repositories:
     url: |
         https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
 
+plugs:
+  mongosh-posix-mq:
+    interface: posix-mq
+    posix-mq: mongosh
+
 slots:
   logs:
     interface: content
     source:
       read:
         - $SNAP_COMMON/var/log/mongos
+  mongosh-posix-mq-provider:
+    interface: posix-mq
+    posix-mq: mongosh
+    path: /mongosh
+    permissions:
+      - read
 
 apps:
   get-keyfile:
@@ -60,6 +71,7 @@ apps:
       XDG_CACHE_HOME: $SNAP_DATA/home/.cache
       XDG_CONFIG_HOME: $SNAP_DATA/home/.config
     plugs:
+      - mongosh-posix-mq
       - network
       - system-observe
   mongos:
