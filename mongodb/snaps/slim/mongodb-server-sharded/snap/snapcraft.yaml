@@ -76,7 +76,6 @@ apps:
     plugs:
       - network
       - system-observe
-      - sys-fs-cgroup-system-slice
       - mongosh-posix-mq
   mongobridge:
     command: drop_priv.sh mongobridge
