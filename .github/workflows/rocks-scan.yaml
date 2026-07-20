@@ -7,7 +7,6 @@ on:
         required: true
         type: string
       artifact-prefix:
-        default: packed-rock
         required: false
         type: string
 
@@ -37,7 +36,7 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
           ROCK_NAME: ${{ matrix.rock.name }}
         run: |
-          echo "artifact_pattern=${ARTIFACT_PREFIX}*${PLATFORM}" >> "$GITHUB_OUTPUT"
+          echo "artifact_pattern=${ARTIFACT_PREFIX}-${ROCK_NAME}*${PLATFORM}" >> "$GITHUB_OUTPUT"
           echo "image_tag=${PLATFORM}" >> "$GITHUB_OUTPUT"
           echo "scan_suffix=${PLATFORM}" >> "$GITHUB_OUTPUT"
 
@@ -97,7 +96,7 @@ jobs:
           scanners: vuln
 
       - name: Upload trivy report as a Github artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sbom-report-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}
           path: dependency-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sbom.json
