@@ -13,7 +13,6 @@ export PBM_MONGODB_URI="$(snapctl get pbm-uri)"
     --regid snap_daemon -- \
     bash -c 'echo "# this file is to be left empty. Changes in this file will be ignored." > "${SNAP_DATA}/etc/pbm/pbm_config.yaml"'
 
-
 HOME_DIR="${SNAP_DATA}/home"
 GSS="${SNAP_DATA}/etc/gss"
 mkdir -p "${GSS}"

@@ -15,6 +15,7 @@ export HOME_DIR="${SNAP_DATA}"/home
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
 export VAULT_CONFIG_FILE="${VAULT_CONF}"/vault-agent.hcl
+export HOME_DIR="${SNAP_DATA}"/home
 
 # Create the necessary parent directories 
 mkdir -p $DATA
@@ -33,6 +34,15 @@ chown 584788:root "${GSS}"
     -- \
     bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
 
+
+mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+chown 584788:root "${GSS}"
+"${SNAP}/usr/bin/setpriv" \
+    --clear-groups \
+    --reuid snap_daemon \
+    --regid snap_daemon \
+    -- \
+    bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
 
 # If we just created the directory, we set up permissions
 if [ stat -c '%u' "$DATA" == 0 ]; then
