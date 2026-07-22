@@ -103,9 +103,10 @@ def test_keyfile_path_in_config():
     )
     loaded_config = yaml.safe_load(config_content.stdout)
     assert loaded_config["security"]["keyFile"] == keyfile
+    assert "journal" not in loaded_config["storage"]
 
 
-@pytest.mark.run(after="test_keyfile_actions")
+@pytest.mark.run(after="test_keyfile_path_in_config")
 def test_all_apps():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)

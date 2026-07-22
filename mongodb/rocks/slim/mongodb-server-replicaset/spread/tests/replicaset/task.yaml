@@ -1,0 +1,162 @@
+summary: Three-member replica set with keyfile
+
+execute: |
+  set -euo pipefail
+
+  IMAGE=mongodb-server-replicaset:spreadtest
+  PREFIX="${SPREAD_TASK//\//_}"
+  NET="${PREFIX}-net"
+  MEMBER1="${PREFIX}-mongo1"
+  MEMBER2="${PREFIX}-mongo2"
+  MEMBER3="${PREFIX}-mongo3"
+  MEMBER1_VOL="${PREFIX}-mongo1-data"
+  MEMBER2_VOL="${PREFIX}-mongo2-data"
+  MEMBER3_VOL="${PREFIX}-mongo3-data"
+  ADMIN_PWD="adminpassword"
+  ADMIN_URI="mongodb://admin:${ADMIN_PWD}@127.0.0.1:27017/admin"
+  DIRECT_AUTH_URI="mongodb://admin:${ADMIN_PWD}@127.0.0.1:27017/admin?directConnection=true"
+
+  # Block until the mongod in $1 answers ping. Remaining arg is the mongosh connection port
+  wait_ping() {
+    local container="$1"
+    shift
+    for _ in $(seq 1 45); do
+      if docker exec "$container" mongosh "$@" --quiet \
+          --eval 'db.runCommand({ping: 1}).ok' | grep -qx 1; then
+        return 0
+      fi
+      sleep 2
+    done
+    echo "timed out waiting for $container"
+    return 1
+  }
+
+  get_primary() {
+    for member in "$MEMBER1" "$MEMBER2" "$MEMBER3"; do
+      if docker exec "$member" mongosh --port 27017 --quiet \
+          --eval 'db.hello().isWritablePrimary' | grep -qx true; then
+        echo "$member"
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  wait_primary() {
+    for _ in $(seq 1 45); do
+      if primary="$(get_primary)"; then
+        echo "$primary"
+        return 0
+      fi
+      sleep 2
+    done
+    echo "no primary elected" >&2
+    return 1
+  }
+
+  # Block until the replica set member in $1 becomes a readable secondary.
+  wait_secondary() {
+    for _ in $(seq 1 45); do
+      if docker exec "$1" mongosh "$DIRECT_AUTH_URI" --quiet \
+          --eval 'db.hello().secondary' | grep -qx true; then
+        return 0
+      fi
+      sleep 2
+    done
+    echo "no secondary state reached on $1"
+    return 1
+  }
+
+  # Block until a specific secondary can read the test document.
+  wait_replicated_read() {
+    for _ in $(seq 1 45); do
+      if docker exec "$1" mongosh "${DIRECT_AUTH_URI}&readPreference=secondaryPreferred" --quiet \
+          --eval "db.getMongo().setReadPref('secondaryPreferred'); db.getSiblingDB('my-test-db').items.findOne({_id: 1})?.v" \
+          | grep -qx hello; then
+        return 0
+      fi
+      sleep 2
+    done
+    echo "test document did not replicate to $1"
+    return 1
+  }
+
+  echo "=== Setting up docker network ==="
+  docker network create "$NET"
+
+  echo "=== Starting replica set members ==="
+  docker run -d --name "$MEMBER1" --network "$NET" \
+    -v "$MEMBER1_VOL:/var/lib/mongodb" \
+    -e MONGOD_ARGS="--replSet rs0 --bind_ip 0.0.0.0" \
+    "$IMAGE"
+  wait_ping "$MEMBER1" --port 27017
+  mongod_state="$(docker exec "$MEMBER1" pebble services mongod | awk '$1 == "mongod" {print $3}')"
+  test "$mongod_state" = "active"
+  KEYFILE_CONTENT="$(docker exec "$MEMBER1" get-keyfile)"
+
+  docker run -d --name "$MEMBER2" --network "$NET" \
+    -v "$MEMBER2_VOL:/var/lib/mongodb" \
+    -e MONGOD_ARGS="--replSet rs0 --bind_ip 0.0.0.0" \
+    "$IMAGE"
+  docker run -d --name "$MEMBER3" --network "$NET" \
+    -v "$MEMBER3_VOL:/var/lib/mongodb" \
+    -e MONGOD_ARGS="--replSet rs0 --bind_ip 0.0.0.0" \
+    "$IMAGE"
+
+  wait_ping "$MEMBER2" --port 27017
+  wait_ping "$MEMBER3" --port 27017
+
+  echo "=== Sharing keyfile across replica set members ==="
+  docker exec "$MEMBER2" set-keyfile "$KEYFILE_CONTENT"
+  docker exec "$MEMBER3" set-keyfile "$KEYFILE_CONTENT"
+  docker restart "$MEMBER2" "$MEMBER3"
+  wait_ping "$MEMBER2" --port 27017
+  wait_ping "$MEMBER3" --port 27017
+
+  mongod_state="$(docker exec "$MEMBER2" pebble services mongod | awk '$1 == "mongod" {print $3}')"
+  test "$mongod_state" = "active"
+  mongod_state="$(docker exec "$MEMBER3" pebble services mongod | awk '$1 == "mongod" {print $3}')"
+  test "$mongod_state" = "active"
+
+  echo "=== Initializing replica set ==="
+  docker exec "$MEMBER1" mongosh --port 27017 --quiet \
+    --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '${MEMBER1}:27017'}, {_id: 1, host: '${MEMBER2}:27017'}, {_id: 2, host: '${MEMBER3}:27017'}]}).ok" \
+    | grep -qx 1
+  PRIMARY="$(wait_primary)"
+  echo "Primary elected: ${PRIMARY}"
+
+  echo "=== Creating admin user ==="
+  docker exec "$PRIMARY" mongosh --port 27017 --quiet \
+    --eval "db.getSiblingDB('admin').createUser({user: 'admin', pwd: '${ADMIN_PWD}', roles: [{role: 'root', db: 'admin'}]})"
+
+  echo "=== Waiting for secondaries ==="
+  SECONDARIES=()
+  for member in "$MEMBER1" "$MEMBER2" "$MEMBER3"; do
+    if [ "$member" != "$PRIMARY" ]; then
+      SECONDARIES+=("$member")
+      wait_secondary "$member"
+    fi
+  done
+  test "${#SECONDARIES[@]}" -eq 2
+
+  echo "=== Testing write through primary ==="
+  docker exec "$PRIMARY" mongosh "$ADMIN_URI" --quiet \
+    --eval "db.getSiblingDB('my-test-db').items.insertOne({_id: 1, v: 'hello'}).acknowledged" \
+    | grep -qx true
+  docker exec "$PRIMARY" mongosh "$ADMIN_URI" --quiet \
+    --eval "db.getSiblingDB('my-test-db').items.findOne({_id: 1}).v" \
+    | grep -qx hello
+
+  echo "=== Testing replicated read from secondary ==="
+  for secondary in "${SECONDARIES[@]}"; do
+    wait_replicated_read "$secondary"
+  done
+
+restore: |
+  set +u
+
+  PREFIX="${SPREAD_TASK//\//_}"
+
+  docker rm -f "${PREFIX}-mongo1" "${PREFIX}-mongo2" "${PREFIX}-mongo3" || true
+  docker volume rm "${PREFIX}-mongo1-data" "${PREFIX}-mongo2-data" "${PREFIX}-mongo3-data" || true
+  docker network rm "${PREFIX}-net" || true

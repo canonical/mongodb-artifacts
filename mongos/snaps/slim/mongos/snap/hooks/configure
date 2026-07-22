@@ -1,3 +1,19 @@
 #!/bin/bash
 set -eu
+
+HOME_DIR="${SNAP_DATA}/home"
+GSS="${SNAP_DATA}/etc/gss"
+mkdir -p "${GSS}"
+chown 584788:root "${GSS}"
+"${SNAP}/usr/bin/setpriv" \
+    --clear-groups \
+    --reuid snap_daemon \
+    --regid snap_daemon \
+    -- \
+    bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
+
+mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+chown 584788:root "${HOME_DIR}" "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+
 exit 0
+

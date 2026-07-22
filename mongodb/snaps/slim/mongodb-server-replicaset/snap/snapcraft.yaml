@@ -41,12 +41,23 @@ package-repositories:
     url: |
         https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
 
+plugs:
+  mongosh-posix-mq:
+    interface: posix-mq
+    posix-mq: mongosh
+
 slots:
   logs:
     interface: content
     source:
       read:
         - $SNAP_COMMON/var/log/mongodb
+  mongosh-posix-mq-provider:
+    interface: posix-mq
+    posix-mq: mongosh
+    path: /mongosh
+    permissions:
+      - read
 
 apps:
   get-keyfile:
@@ -55,15 +66,32 @@ apps:
     command: set-keyfile.sh
   mongosh:
     command: drop_priv.sh mongosh
+    environment:
+      HOME: $SNAP_DATA/home
+      XDG_CACHE_HOME: $SNAP_DATA/home/.cache
+      XDG_CONFIG_HOME: $SNAP_DATA/home/.config
     plugs:
+      - mongosh-posix-mq
       - network
+      - system-observe
   mongobridge:
     command: drop_priv.sh mongobridge
+    environment:
+      SSL_CERT_FILE: $SNAP/etc/ssl/certs/ca-certificates.crt
+    plugs:
+      - hardware-observe
+      - network
+      - network-bind
+      - network-observe
+      - system-observe
   mongod-cli:
     command: drop_priv.sh mongod
     plugs:
+      - hardware-observe
       - network
       - network-bind
+      - network-observe
+      - system-observe
     slots:
       - logs
   mongod:
@@ -73,8 +101,11 @@ apps:
     restart-condition: always
     restart-delay: 20s
     plugs:
+      - hardware-observe
       - network
       - network-bind
+      - network-observe
+      - system-observe
     slots:
       - logs
   # MongoDB Tools
@@ -85,10 +116,16 @@ apps:
       - network-bind
   mongoexport:
     command: drop_priv.sh mongoexport
+    plugs:
+      - network
   mongofiles:
     command: drop_priv.sh mongofiles
+    plugs:
+      - network
   mongoimport:
     command: drop_priv.sh mongoimport
+    plugs:
+      - network
   mongorestore:
     command: drop_priv.sh mongorestore
     plugs:
@@ -96,8 +133,12 @@ apps:
       - network-bind
   mongostat:
     command: drop_priv.sh mongostat
+    plugs:
+      - network
   mongotop:
     command: drop_priv.sh mongotop
+    plugs:
+      - network
 
 parts:
   mongodb-license:
@@ -119,6 +160,8 @@ parts:
       - mongodb-shell
       - util-linux
       - openssl
+      - libsasl2-modules
+      - libgssapi-krb5-2
     stage-snaps:
       - yq
     organize:
