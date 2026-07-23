@@ -16,7 +16,6 @@ esac
 export SASL_PATH="${SNAP}/usr/lib/${arch_triplet}/sasl2"
 export GSS_MECH_CONFIG="${SNAP_DATA}/etc/gss/mech"
 
-
 SNAP_ARGS="$(snapctl get mongos-args)"
 
 if [[ -n "${SNAP_ARGS}" ]]; then
