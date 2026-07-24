@@ -66,7 +66,7 @@ suites:
         --branch "$OPERATOR_BRANCH" \
         "$OPERATOR_REPO" \
         operator
-      IMAGE_RESOURCE_PATH=".resources.mongodb-image.\"upstream-source\""
+      IMAGE_RESOURCE_PATH=".resources.\"mongodb-image\".\"upstream-source\""
       yq -i -Y \
         "${IMAGE_RESOURCE_PATH} = \"${ROCK_IMAGE_SOURCE}\"" \
         operator/metadata.yaml
