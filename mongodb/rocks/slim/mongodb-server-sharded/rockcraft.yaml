@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: mongodb-server-sharded # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: Sharded MongoDB server in a rock. # 79 char long summary
 description: |
   Sharded MongoDB server packages a sharded MongoDB topology,
@@ -21,13 +21,10 @@ services:
     # so the default container only runs mongod.
     startup: disabled
     command: "/bin/bash /bin/start-mongos.sh"
-
 run-user: _daemon_
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
@@ -109,13 +106,11 @@ parts:
       # for snap packages;
       cp snap.mongodb-server-sharded/manifest.yaml ${rocks}
       cp snap.mongodb-server-sharded/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
-
   entry:
     plugin: dump
     source: scripts

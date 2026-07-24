@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: mongos # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: mongos in a rock. # 79 char long summary
 description: |
   Mongos is the MongoDB sharded cluster query router.
@@ -15,13 +15,10 @@ services:
     override: replace
     startup: enabled
     command: "/bin/bash /bin/start-mongos.sh"
-
 run-user: _daemon_
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
@@ -94,13 +91,11 @@ parts:
       # for snap packages;
       cp snap.mongos/manifest.yaml ${rocks}
       cp snap.mongos/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
-
   entry:
     plugin: dump
     source: scripts

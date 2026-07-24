@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: charmed-mongodb # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: MongoDB in a rock. # 79 char long summary
 description: |
   MongoDB is a source-available cross-platform
@@ -23,11 +23,9 @@ services:
     command: "/bin/bash /bin/start-vault-agent.sh"
     user: mongodb
     group: mongodb
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
@@ -88,14 +86,12 @@ parts:
       # for snap packages
       cp snap.charmed-mongodb/manifest.yaml ${rocks}
       cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
       usr/share/doc/logrotate/copyright: licenses/COPYRIGHT-logrotate
-
   entry:
     plugin: dump
     source: scripts
