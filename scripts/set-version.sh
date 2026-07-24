@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if ! type "jq" > /dev/null; then
-    echo "Missing yq, please install."
-    exit 1
-fi
-
 if ! type "yq" > /dev/null; then
     echo "Missing yq, please install."
     exit 1
