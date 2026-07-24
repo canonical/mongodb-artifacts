@@ -38,8 +38,6 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
-    build-packages:
-      - yq
     override-prime: |
       craftctl default
 
@@ -51,8 +49,8 @@ parts:
       cp $CRAFT_STAGE/etc/mongod.conf "${mongo_config_file}"
 
       # Common mongod base config
-      yq -i '.processManagement.fork = false' "${mongo_config_file}"
-      yq -i '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
+      yq -i -Y '.processManagement.fork = false' "${mongo_config_file}"
+      yq -i -Y '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
         "${mongo_config_file}"
       # Set the security placeholder in the right place
       sed -i '/^#security:$/d' "${mongo_config_file}"

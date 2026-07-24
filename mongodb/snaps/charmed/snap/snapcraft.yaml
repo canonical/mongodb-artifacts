@@ -219,8 +219,9 @@ parts:
       - libgssapi-krb5-2
       - mongodb-shell
       - libsasl2-modules
-    stage-snaps:
+      - jq
       - yq
+    stage-snaps:
       - vault
     override-prime: |
       craftctl default

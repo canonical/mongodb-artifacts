@@ -157,7 +157,7 @@ parts:
       - openssl
       - libsasl2-modules
       - libgssapi-krb5-2
-    stage-snaps:
+      - jq
       - yq
     override-prime: |
       craftctl default

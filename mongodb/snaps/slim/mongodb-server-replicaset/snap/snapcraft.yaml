@@ -153,7 +153,7 @@ parts:
       - openssl
       - libsasl2-modules
       - libgssapi-krb5-2
-    stage-snaps:
+      - jq
       - yq
     organize:
       usr/share/doc/mongodb-shell/copyright: licenses/LICENSE-mongodb-shell

@@ -3,6 +3,7 @@
 
 set -eux
 
+export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export ETC="$SNAP_DATA"/etc
 export CONF="${SNAP_DATA}"/etc/mongod
 export GSS="${SNAP_DATA}"/etc/gss
@@ -58,12 +59,12 @@ echo "copying default config to ${MONGO_CONFIG_FILE}"
 cp -r ${SNAP}/etc/mongod.conf ${MONGO_CONFIG_FILE}
 
 # mongod.conf default values are not consistent with the snap directory system.
-yq -i ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
-yq -i ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGO_CONFIG_FILE}"
-yq -i ".processManagement.pidFilePath = \"${MONGOD_PID_FILE}\"" "${MONGO_CONFIG_FILE}"
-yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
-yq -i ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
-yq -i "del(.storage.journal)" ${MONGO_CONFIG_FILE}
+yq -i -Y ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
+yq -i -Y ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGO_CONFIG_FILE}"
+yq -i -Y ".processManagement.pidFilePath = \"${MONGOD_PID_FILE}\"" "${MONGO_CONFIG_FILE}"
+yq -i -Y ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
+yq -i -Y ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
+yq -i -Y "del(.storage.journal)" ${MONGO_CONFIG_FILE}
 sed -i '/^#security:$/d' "${MONGO_CONFIG_FILE}"
 sed -i '/^security:$/i #security:' "${MONGO_CONFIG_FILE}"
 
@@ -73,10 +74,10 @@ echo "copying default config to ${MONGOS_CONFIG_FILE}"
 cp -r ${MONGO_CONFIG_FILE} ${MONGOS_CONFIG_FILE}
 
 # mongos.conf default values are not consistent with the snap directory system.
-yq -i ".processManagement.pidFilePath = \"${MONGOS_PID_FILE}\"" "${MONGOS_CONFIG_FILE}"
-yq -i ".systemLog.path = \"${LOGS}/mongos.log\"" ${MONGOS_CONFIG_FILE}
-yq -i ".net.port = 27018" ${MONGOS_CONFIG_FILE}
-yq -i "del(.storage)" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".processManagement.pidFilePath = \"${MONGOS_PID_FILE}\"" "${MONGOS_CONFIG_FILE}"
+yq -i -Y ".systemLog.path = \"${LOGS}/mongos.log\"" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".net.port = 27018" ${MONGOS_CONFIG_FILE}
+yq -i -Y "del(.storage)" ${MONGOS_CONFIG_FILE}
 
 # Change ownership of snap directories to allow snap_daemon to read/write
 chown -R 584788:root "${SNAP_DATA}"/*

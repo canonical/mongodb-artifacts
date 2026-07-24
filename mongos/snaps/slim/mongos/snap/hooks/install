@@ -3,6 +3,7 @@
 
 set -eux
 
+export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export ETC="$SNAP_DATA"/etc
 export CONF="${SNAP_DATA}"/etc/mongod
 export GSS="${SNAP_DATA}"/etc/gss
@@ -56,12 +57,12 @@ echo "copying default config to ${MONGOS_CONFIG_FILE}"
 cp -r ${SNAP}/etc/mongod.conf ${MONGOS_CONFIG_FILE}
 
 # mongos.conf default values are not consistent with the snap directory system.
-yq -i ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
-yq -i ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGOS_CONFIG_FILE}"
-yq -i ".processManagement.pidFilePath = \"${PID_FILE}\"" "${MONGOS_CONFIG_FILE}"
-yq -i ".systemLog.path = \"${LOGS}/mongos.log\"" ${MONGOS_CONFIG_FILE}
-yq -i ".net.port = 27018" ${MONGOS_CONFIG_FILE}
-yq -i "del(.storage)" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".security.keyFile = \"${KEYFILE_CONFIG}\"" "${MONGOS_CONFIG_FILE}"
+yq -i -Y ".processManagement.pidFilePath = \"${PID_FILE}\"" "${MONGOS_CONFIG_FILE}"
+yq -i -Y ".systemLog.path = \"${LOGS}/mongos.log\"" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".net.port = 27018" ${MONGOS_CONFIG_FILE}
+yq -i -Y "del(.storage)" ${MONGOS_CONFIG_FILE}
 sed -i '/^#security:$/d' "${MONGOS_CONFIG_FILE}"
 sed -i '/^security:$/i #security:' "${MONGOS_CONFIG_FILE}"
 
