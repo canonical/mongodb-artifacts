@@ -1,3 +1,8 @@
 #!/bin/bash
 set -eu
+
+HOME_DIR="${SNAP_DATA}/home"
+mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+chown -R 584788:root "${HOME_DIR}"
+
 exit 0
