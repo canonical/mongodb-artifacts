@@ -32,6 +32,9 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 

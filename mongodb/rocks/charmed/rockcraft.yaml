@@ -44,6 +44,9 @@ parts:
     override-overlay: |
       groupadd -g  584788 mongodb
       useradd -M -r -g mongodb -u 584788 mongodb
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 

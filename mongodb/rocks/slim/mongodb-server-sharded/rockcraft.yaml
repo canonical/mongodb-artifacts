@@ -38,6 +38,9 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 
@@ -60,11 +63,11 @@ parts:
       cp "${mongo_config_file}" "${mongos_config_file}"
 
       # mongos-specific changes
-      yq -i '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
+      yq -i -Y '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
         "${mongos_config_file}"
-      yq -i '.net.port = 27018' "${mongos_config_file}"
-      yq -i 'del(.storage)' "${mongos_config_file}"
-      yq -i '.systemLog.path = "/var/log/mongodb/mongos.log"' \
+      yq -i -Y '.net.port = 27018' "${mongos_config_file}"
+      yq -i -Y 'del(.storage)' "${mongos_config_file}"
+      yq -i -Y '.systemLog.path = "/var/log/mongodb/mongos.log"' \
         "${mongos_config_file}"
 
       rm -f "$CRAFT_PRIME/etc/mongod.conf"
