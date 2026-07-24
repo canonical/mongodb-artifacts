@@ -5,9 +5,9 @@ if ! type "yq" > /dev/null; then
     exit 1
 fi
 
-if [ $# -eq 0 ]
+if [ $# -ne 1 ]
   then
-    echo "No arguments supplied"
+    echo "Invalid arguments supplied"
     echo "Usage: bash scripts/set-version.sh X.Y.Z-W"
     exit 1
 fi
