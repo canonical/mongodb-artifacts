@@ -3,6 +3,7 @@
 
 set -eux
 
+export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export ETC="$SNAP_DATA"/etc
 export CONF="${SNAP_DATA}"/etc/mongod
 export GSS="${SNAP_DATA}"/etc/gss
@@ -78,17 +79,17 @@ echo "copying default config to ${VAULT_CONFIG_FILE}"
 cp -r ${SNAP}/vault.hcl ${VAULT_CONFIG_FILE}
 
 # mongod.conf default values are not consistent with the snap directory system.
-yq -i ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
-yq -i "del(.processManagement.pidFilePath)" ${MONGO_CONFIG_FILE}
-yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
-yq -i ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
-yq -i "del(.storage.journal)" ${MONGO_CONFIG_FILE}
+yq -i -Y ".processManagement.fork = false" ${MONGO_CONFIG_FILE}
+yq -i -Y "del(.processManagement.pidFilePath)" ${MONGO_CONFIG_FILE}
+yq -i -Y ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGO_CONFIG_FILE}
+yq -i -Y ".storage.dbPath = \"${DATA}\"" ${MONGO_CONFIG_FILE}
+yq -i -Y "del(.storage.journal)" ${MONGO_CONFIG_FILE}
 
 # mongos.conf default values are not consistent with the snap directory system.
-yq -i ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
-yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGOS_CONFIG_FILE}
-yq -i ".net.port = 27018" ${MONGOS_CONFIG_FILE}
-yq -i "del(.storage)" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGOS_CONFIG_FILE}
+yq -i -Y ".net.port = 27018" ${MONGOS_CONFIG_FILE}
+yq -i -Y "del(.storage)" ${MONGOS_CONFIG_FILE}
 
 # Copy over the LDAP configuration to keep isolation.
 cp -r "${SNAP}/etc/ldap/" "${ETC}"

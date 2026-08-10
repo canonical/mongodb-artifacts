@@ -2,7 +2,6 @@
 
 This repository contains MongoDB packaging artifacts used by Canonical, including snaps and rocks for MongoDB server deployments.
 
-
 ## Repository structure
 
 The main directory structure is:
@@ -53,6 +52,15 @@ cd mongodb-artifacts/mongodb/rocks/slim/<rock-name>
 rockcraft pack
 ```
 
+## Scripts
+
+There are some scripts available in `scripts/`
+The only script currently is `set-version.sh`
+
+Usage: `bash scripts/set-version.sh X.Y.Z-W`
+
+This will update all the charms and rocks `.version` field to the provided version.
+
 ## Project & Community
 
 MongoDB artifacts is an open source project that warmly welcomes community contributions, suggestions, fixes, and constructive feedback.
@@ -61,7 +69,6 @@ MongoDB artifacts is an open source project that warmly welcomes community contr
 * Raise software issues or feature requests in [GitHub](https://github.com/canonical/mongodb-artifacts/issues)
 * Report security issues through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File)
 * Meet the community and chat with us on [Matrix](https://matrix.to/#/#charmhub-data-platform:ubuntu.com)
-
 
 ## Contributing
 

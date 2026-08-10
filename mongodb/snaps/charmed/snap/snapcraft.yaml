@@ -1,28 +1,24 @@
 name: charmed-mongodb
 title: Charmed MongoDB
 base: core24 # the base snap is the execution environment for this snap
-version: "8.0.10-4" # just for humans, typically '1.2+git' or '1.3.2'
+version: "8.0.23-10" # just for humans, typically '1.2+git' or '1.3.2'
 summary: MongoDB in a snap. # 79 char long summary
 description: |
   MongoDB is a source-available cross-platform
   document-oriented database program. Classified
   as a NoSQL database program, MongoDB uses JSON
   -like documents with optional schemas.
-
 license: Apache-2.0
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict
 platforms:
   amd64:
   arm64:
-
 website: https://github.com/canonical/charmed-mongodb-snap
 contact: https://github.com/canonical/charmed-mongodb-snap/issues/new
 issues: https://github.com/canonical/charmed-mongodb-snap/issues/new
-
 system-usernames:
   snap_daemon: shared
-
 hooks:
   post-refresh:
     plugs:
@@ -36,7 +32,6 @@ hooks:
     plugs:
       - network
       - network-bind
-
 package-repositories:
   - type: apt
     components: [main]
@@ -48,25 +43,23 @@ package-repositories:
     suites: [noble]
     key-id: 6676E3F1A76ADBE4488944BF7D1A96D4BF78C79E
     url: |
-        https://ppa.launchpadcontent.net/data-platform/percona-backup-mongodb/ubuntu
+      https://ppa.launchpadcontent.net/data-platform/percona-backup-mongodb/ubuntu
   - type: apt
     components: [main]
     suites: [noble]
     key-id: 6676E3F1A76ADBE4488944BF7D1A96D4BF78C79E
     url: |
-        https://ppa.launchpadcontent.net/data-platform/mongodb-exporter/ubuntu
+      https://ppa.launchpadcontent.net/data-platform/mongodb-exporter/ubuntu
   - type: apt
     components: [main]
     suites: [noble]
     key-id: 6676E3F1A76ADBE4488944BF7D1A96D4BF78C79E
     url: |
-        https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
-
+      https://ppa.launchpadcontent.net/data-platform/mongodb-shell/ubuntu
 plugs:
   mongosh-posix-mq:
     interface: posix-mq
     posix-mq: mongosh
-
 slots:
   logs:
     interface: content
@@ -81,10 +74,8 @@ slots:
     path: /mongosh
     permissions:
       - read
-
 environment:
   LDAPCONF: $SNAP_DATA/etc/ldap/ldap.conf
-
 apps:
   mongosh:
     command: drop_priv.sh mongosh
@@ -228,8 +219,9 @@ parts:
       - libgssapi-krb5-2
       - mongodb-shell
       - libsasl2-modules
-    stage-snaps:
+      - jq
       - yq
+    stage-snaps:
       - vault
     override-prime: |
       craftctl default

@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: mongodb-server-replicaset # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: Replica set MongoDB server in a rock. # 79 char long summary
 description: |
   Replica set MongoDB server packages a replica set MongoDB topology,
@@ -14,13 +14,10 @@ services:
     override: replace
     startup: enabled
     command: "/bin/bash /bin/start-mongod.sh"
-
 run-user: _daemon_
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
@@ -34,8 +31,9 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
-    build-packages:
-      - yq
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 
@@ -46,8 +44,8 @@ parts:
       cp $CRAFT_STAGE/etc/mongod.conf "${mongo_config_file}"
 
       # mongod base config
-      yq -i '.processManagement.fork = false' "${mongo_config_file}"
-      yq -i '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
+      yq -i -Y '.processManagement.fork = false' "${mongo_config_file}"
+      yq -i -Y '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
         "${mongo_config_file}"
       # Set the security placeholder in the right place
       sed -i '/^#security:$/d' "${mongo_config_file}"
@@ -89,13 +87,11 @@ parts:
       # for snap packages;
       cp snap.mongodb-server-replicaset/manifest.yaml ${rocks}
       cp snap.mongodb-server-replicaset/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
-
   entry:
     plugin: dump
     source: scripts

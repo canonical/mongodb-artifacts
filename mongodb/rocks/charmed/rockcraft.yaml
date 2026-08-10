@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: charmed-mongodb # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: MongoDB in a rock. # 79 char long summary
 description: |
   MongoDB is a source-available cross-platform
@@ -23,17 +23,14 @@ services:
     command: "/bin/bash /bin/start-vault-agent.sh"
     user: mongodb
     group: mongodb
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
     stage-snaps:
       - charmed-mongodb/8/edge
-      - yq
     overlay-packages:
       - ca-certificates
     stage-packages:
@@ -47,6 +44,9 @@ parts:
     override-overlay: |
       groupadd -g  584788 mongodb
       useradd -M -r -g mongodb -u 584788 mongodb
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 
@@ -63,10 +63,10 @@ parts:
       cp $CRAFT_PRIME/etc/mongod.conf "${mongo_config_file}"
       cp $CRAFT_PRIME/etc/mongod.conf "${mongos_config_file}"
 
-      yq -i ".processManagement.fork = false" "${mongo_config_file}"
-      yq -i ".processManagement.fork = false" "${mongos_config_file}"
-      yq -i ".net.port = 27018" "${mongos_config_file}"
-      yq -i "del(.storage)" "${mongos_config_file}"
+      yq -i -Y ".processManagement.fork = false" "${mongo_config_file}"
+      yq -i -Y ".processManagement.fork = false" "${mongos_config_file}"
+      yq -i -Y ".net.port = 27018" "${mongos_config_file}"
+      yq -i -Y "del(.storage)" "${mongos_config_file}"
 
       chown -R 584788:584788 "${conf}"
 
@@ -88,14 +88,12 @@ parts:
       # for snap packages
       cp snap.charmed-mongodb/manifest.yaml ${rocks}
       cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
       usr/share/doc/logrotate/copyright: licenses/COPYRIGHT-logrotate
-
   entry:
     plugin: dump
     source: scripts

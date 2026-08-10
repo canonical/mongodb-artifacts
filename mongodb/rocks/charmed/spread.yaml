@@ -20,13 +20,13 @@ suites:
         libsasl2-dev \
         pipx \
         python3-dev \
-        python3-pip
+        python3-pip \
+        jq yq
 
       snap list charmcraft || snap install charmcraft --classic
       snap list concierge || snap install concierge --classic
       snap list docker || snap install docker
       snap list rockcraft || snap install rockcraft --classic
-      snap list yq || snap install yq --classic
 
       export PATH="/snap/bin:$PATH:$(pipx environment --value PIPX_BIN_DIR)"
 
@@ -66,8 +66,8 @@ suites:
         --branch "$OPERATOR_BRANCH" \
         "$OPERATOR_REPO" \
         operator
-      IMAGE_RESOURCE_PATH=".resources.mongodb-image.\"upstream-source\""
-      yq -i \
+      IMAGE_RESOURCE_PATH=".resources.\"mongodb-image\".\"upstream-source\""
+      yq -i -Y \
         "${IMAGE_RESOURCE_PATH} = \"${ROCK_IMAGE_SOURCE}\"" \
         operator/metadata.yaml
       printf "%s\n" "$ROCK_VERSION" > operator/workload_version

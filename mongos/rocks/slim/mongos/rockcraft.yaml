@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: mongos # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.10-4" # just for humans. Semantic versioning is recommended
+version: "8.0.23-10" # just for humans. Semantic versioning is recommended
 summary: mongos in a rock. # 79 char long summary
 description: |
   Mongos is the MongoDB sharded cluster query router.
@@ -15,13 +15,10 @@ services:
     override: replace
     startup: enabled
     command: "/bin/bash /bin/start-mongos.sh"
-
 run-user: _daemon_
-
 platforms: # The platforms this rock should be built on and run on
   amd64:
   arm64:
-
 parts:
   mongo-snap:
     plugin: nil
@@ -35,8 +32,9 @@ parts:
   non-root-user:
     plugin: nil
     after: [mongo-snap]
-    build-packages:
-      - yq
+    build-environment:
+      - PYTHONPATH: ${CRAFT_PRIME}/usr/lib/python3/dist-packages/
+      - LD_LIBRARY_PATH: ${CRAFT_STAGE}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-prime: |
       craftctl default
 
@@ -47,17 +45,17 @@ parts:
       cp $CRAFT_STAGE/etc/mongod.conf "${mongos_config_file}"
 
       # mongos base config
-      yq -i '.processManagement.fork = false' "${mongos_config_file}"
-      yq -i '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
+      yq -i -Y '.processManagement.fork = false' "${mongos_config_file}"
+      yq -i -Y '.processManagement.pidFilePath = "/var/run/mongos.pid"' \
         "${mongos_config_file}"
-      yq -i '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
+      yq -i -Y '.security.keyFile = "/etc/mongod/mongodb-keyfile"' \
         "${mongos_config_file}"
       # Set the security placeholder in the right place
       sed -i '/^#security:$/d' "${mongos_config_file}"
       sed -i '/^security:$/i #security:' "${mongos_config_file}"
-      yq -i '.net.port = 27018' "${mongos_config_file}"
-      yq -i 'del(.storage)' "${mongos_config_file}"
-      yq -i '.systemLog.path = "/var/log/mongodb/mongos.log"' \
+      yq -i -Y '.net.port = 27018' "${mongos_config_file}"
+      yq -i -Y 'del(.storage)' "${mongos_config_file}"
+      yq -i -Y '.systemLog.path = "/var/log/mongodb/mongos.log"' \
         "${mongos_config_file}"
 
       rm -f "$CRAFT_PRIME/etc/mongod.conf"
@@ -94,13 +92,11 @@ parts:
       # for snap packages;
       cp snap.mongos/manifest.yaml ${rocks}
       cp snap.mongos/snapcraft.yaml ${rocks}
-
   rock-license:
     plugin: dump
     source: licenses
     organize:
       LICENSE-rock: licenses/LICENSE-rock
-
   entry:
     plugin: dump
     source: scripts

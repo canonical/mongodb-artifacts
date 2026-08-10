@@ -3,6 +3,7 @@
 
 set -eux
 
+export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export CONF="${SNAP_DATA}/etc/mongod"
 export VAULT_CONF="${SNAP_DATA}/etc/vault"
 export ETC="${SNAP_DATA}/etc/"
@@ -25,10 +26,10 @@ if [ ! -f $MONGOS_CONFIG_FILE ]; then
     cp "${SNAP}/etc/mongod.conf" "${MONGOS_CONFIG_FILE}"
 
     # mongos.conf default values are not consistent with the snap directory system.
-    yq -i ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
-    yq -i ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGOS_CONFIG_FILE}
-    yq -i ".net.port = 27018" ${MONGOS_CONFIG_FILE}
-    yq -i "del(.storage)" ${MONGOS_CONFIG_FILE}
+    yq -i -Y ".processManagement.fork = false" ${MONGOS_CONFIG_FILE}
+    yq -i -Y ".systemLog.path = \"${LOGS}/mongod.log\"" ${MONGOS_CONFIG_FILE}
+    yq -i -Y ".net.port = 27018" ${MONGOS_CONFIG_FILE}
+    yq -i -Y "del(.storage)" ${MONGOS_CONFIG_FILE}
 
     # Change ownership of snap directories to allow snap_daemon to read/write
     chown -R 584788:root "${CONF}"
