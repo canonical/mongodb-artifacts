@@ -9,6 +9,8 @@ export MONGOS_CONFIG_FILE="${CONF}/mongod.conf"
 export MONGOS_CONFIG_FILE="${CONF}/mongos.conf"
 export LOGS="${SNAP_COMMON}/var/log/mongodb"
 export LDAP_CONF_DIR="${SNAP_DATA}/etc/ldap/"
+export GSS="${SNAP_DATA}/etc/gss"
+export HOME_DIR="${SNAP_DATA}/home"
 
 if [ ! -f $MONGOS_CONFIG_FILE ]; then
     # Copy over the mongos.conf and create needed directories/files
@@ -44,3 +46,46 @@ if  [ ! -d $LDAP_CONF_DIR ]; then
     # Change ownership of snap directories to allow snap_daemon to read/write
     chown -R 584788:root "${ETC}"
 fi
+
+# Existing installations do not get the GSS directory from the install hook,
+# so create and initialize it when they refresh to this revision.
+if [ ! -f "${GSS}/mech" ]; then
+    # Grant enough permissions to create files
+    chown root:snap_daemon "$ETC"
+    mkdir -p "${GSS}"
+
+    # Handle ownership to snap_daemon
+    chown snap_daemon:snap_daemon ${GSS}
+    "${SNAP}/usr/bin/setpriv" \
+        --clear-groups \
+        --reuid snap_daemon \
+        --regid snap_daemon \
+        -- \
+        bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
+
+    # Change ownership of snap directories to allow snap_daemon to read/write
+    chown -R 584788:root "${ETC}"
+fi
+
+# Create the snap_daemon home directories for installations upgrading from a
+# revision that predates them.
+
+# First ensure the directory exists.
+if [ ! -d ${HOME_DIR} ]; then
+    mkdir -p ${HOME_DIR}
+fi
+
+# Second ensure root ownership
+chown root:snap_daemon "${HOME_DIR}"
+
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh") 
+
+# Third create all directories.
+for directory in ${DIRECTORIES[@]}; do
+    if [ ! -d "$directory" ]; then
+        mkdir -p "$directory"
+        chown 584788:root ${directory}
+    fi
+done
+
+chown 584788:root ${HOME_DIR}
