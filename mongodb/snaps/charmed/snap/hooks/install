@@ -36,7 +36,7 @@ chown 584788:root "${GSS}"
     bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
 
 
-mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh"
 chown 584788:root "${GSS}"
 "${SNAP}/usr/bin/setpriv" \
     --clear-groups \
