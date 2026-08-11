@@ -78,7 +78,7 @@ fi
 # Second ensure root ownership
 chown root:snap_daemon "${HOME_DIR}"
 
-DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh") 
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh")
 
 # Third create all directories.
 for directory in ${DIRECTORIES[@]}; do
