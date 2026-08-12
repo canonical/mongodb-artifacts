@@ -13,16 +13,42 @@ export PBM_MONGODB_URI="$(snapctl get pbm-uri)"
     --regid snap_daemon -- \
     bash -c 'echo "# this file is to be left empty. Changes in this file will be ignored." > "${SNAP_DATA}/etc/pbm/pbm_config.yaml"'
 
-HOME_DIR="${SNAP_DATA}/home"
-GSS="${SNAP_DATA}/etc/gss"
-mkdir -p "${GSS}"
-chown 584788:root "${GSS}"
-"${SNAP}/usr/bin/setpriv" \
-    --clear-groups \
-    --reuid snap_daemon \
-    --regid snap_daemon \
-    -- \
-    bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
+export GSS="${SNAP_DATA}/etc/gss"
+if [ ! -f "${GSS}/mech" ]; then
+    # Grant enough permissions to create files
+    chown root:snap_daemon "$ETC"
+    mkdir -p "${GSS}"
 
-mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
-chown 584788:root "${HOME_DIR}" "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+    # Handle ownership to snap_daemon
+    chown snap_daemon:snap_daemon ${GSS}
+    "${SNAP}/usr/bin/setpriv" \
+        --clear-groups \
+        --reuid snap_daemon \
+        --regid snap_daemon \
+        -- \
+        bash -euo pipefail -c 'chmod 755 "$1"; touch "$1/mech"; chmod 644 "$1/mech"' bash "${GSS}"
+
+    # Change ownership of snap directories to allow snap_daemon to read/write
+    chown -R 584788:root "${ETC}"
+fi
+
+export HOME_DIR="${SNAP_DATA}/home"
+# First ensure the directory exists.
+if [ ! -d ${HOME_DIR} ]; then
+    mkdir -p ${HOME_DIR}
+fi
+
+# Second ensure root ownership
+chown root:snap_daemon "${HOME_DIR}"
+
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh")
+
+# Third create all directories.
+for directory in ${DIRECTORIES[@]}; do
+    if [ ! -d "$directory" ]; then
+        mkdir -p "$directory"
+        chown 584788:root ${directory}
+    fi
+done
+
+chown 584788:root ${HOME_DIR}
