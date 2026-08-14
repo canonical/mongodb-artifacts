@@ -15,7 +15,8 @@ export VAULT_LOGS="${SNAP_COMMON}"/var/log/vault
 export HOME_DIR="${SNAP_DATA}"/home
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
-export VAULT_CONFIG_FILE="${VAULT_CONF}"/vault-agent.hcl
+export VAULT_CONFIG_FILE="${VAULT_CONF}"/agent-config.hcl
+export HOME_DIR="${SNAP_DATA}"/home
 
 # Create the necessary parent directories 
 mkdir -p $DATA

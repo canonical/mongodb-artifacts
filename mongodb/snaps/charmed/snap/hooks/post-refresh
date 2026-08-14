@@ -11,7 +11,7 @@ export MONGOS_CONFIG_FILE="${CONF}/mongos.conf"
 export LOGS="${SNAP_COMMON}/var/log/mongodb"
 export VAULT_LOGS="${SNAP_COMMON}/var/log/vault"
 export LDAP_CONF_DIR="${SNAP_DATA}/etc/ldap/"
-export VAULT_CONFIG_FILE="${VAULT_CONF}/vault-agent.hcl"
+export VAULT_CONFIG_FILE="${VAULT_CONF}/agent-config.hcl"
 export GSS="${SNAP_DATA}/etc/gss"
 export HOME_DIR="${SNAP_DATA}/home"
 
