@@ -177,3 +177,17 @@ def test_remove():
     with open("snap/snapcraft.yaml") as file:
         snapcraft = yaml.safe_load(file)
     subprocess.run(f"sudo snap remove --purge {snapcraft['name']}".split())
+
+@pytest.mark.run(after="test_remove")
+def test_refresh():
+    with open("snap/snapcraft.yaml") as file:
+        snapcraft = yaml.safe_load(file)
+        subprocess.run(
+            f"sudo snap install {snapcraft['name']} --channel 8/edge".split(),
+            check=True,
+        )
+
+        subprocess.run(
+            f"sudo snap install ./{snapcraft['name']}_{snapcraft['version']}_amd64.snap --dangerous".split(),
+            check=True,
+        )

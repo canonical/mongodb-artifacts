@@ -10,7 +10,7 @@ fi
 # Second ensure root ownership
 chown root:snap_daemon "${HOME_DIR}"
 
-DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb" "${HOME_DIR}/.mongodb/mongosh")
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config")
 
 # Third create all directories.
 for directory in ${DIRECTORIES[@]}; do
@@ -21,5 +21,12 @@ for directory in ${DIRECTORIES[@]}; do
 done
 
 chown 584788:root ${HOME_DIR}
+
+"${SNAP}/usr/bin/setpriv" \
+    --clear-groups \
+    --reuid snap_daemon \
+    --regid snap_daemon \
+    -- \
+    mkdir -p "${HOME_DIR}/.mongodb/mongosh"
 
 exit 0
