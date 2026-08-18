@@ -1,8 +1,25 @@
 #!/bin/bash
 set -eu
 
-HOME_DIR="${SNAP_DATA}/home"
-mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
-chown -R 584788:root "${HOME_DIR}"
+export HOME_DIR="${SNAP_DATA}/home"
+# First ensure the directory exists.
+if [ ! -d ${HOME_DIR} ]; then
+    mkdir -p ${HOME_DIR}
+fi
+
+# Second ensure root ownership
+chown root:snap_daemon "${HOME_DIR}"
+
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh")
+
+# Third create all directories.
+for directory in ${DIRECTORIES[@]}; do
+    if [ ! -d "$directory" ]; then
+        mkdir -p "$directory"
+        chown 584788:root ${directory}
+    fi
+done
+
+chown 584788:root ${HOME_DIR}
 
 exit 0
