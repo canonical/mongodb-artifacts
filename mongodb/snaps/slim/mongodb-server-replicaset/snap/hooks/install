@@ -20,7 +20,7 @@ mkdir -p $DATA
 mkdir -p $LOGS
 mkdir -p $CONF
 mkdir -p $RUN
-mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh"
+mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb" "${HOME_DIR}/.mongodb/mongosh"
 
 # If we just created the directory, we set up permissions
 if [ stat -c '%u' "$DATA" == 0 ]; then
