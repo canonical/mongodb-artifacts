@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# post-refresh hook for charmed-mongodb snap
+
+set -eux
+
+mkdir -p ${SNAP_DATA}/my-test
+chown 584788:root ${SNAP_DATA}/my-test
