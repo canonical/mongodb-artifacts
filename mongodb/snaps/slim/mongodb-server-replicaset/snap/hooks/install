@@ -22,6 +22,7 @@ mkdir -p $CONF
 mkdir -p $RUN
 mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
 chown 584788:root "${HOME_DIR}" "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+
 "${SNAP}/usr/bin/setpriv" \
     --clear-groups \
     --reuid snap_daemon \

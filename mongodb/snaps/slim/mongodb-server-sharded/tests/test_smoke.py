@@ -193,6 +193,7 @@ def test_remove():
         snapcraft = yaml.safe_load(file)
     subprocess.run(f"sudo snap remove --purge {snapcraft['name']}".split())
 
+
 @pytest.mark.run(after="test_remove")
 def test_refresh():
     with open("snap/snapcraft.yaml") as file:

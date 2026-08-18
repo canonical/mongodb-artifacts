@@ -23,7 +23,16 @@ mkdir -p $CONF
 mkdir -p $GSS
 mkdir -p $RUN
 mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
+chown 584788:root "${HOME_DIR}" "${HOME_DIR}/.cache" "${HOME_DIR}/.config"
 chown 584788:root "${GSS}"
+
+"${SNAP}/usr/bin/setpriv" \
+    --clear-groups \
+    --reuid snap_daemon \
+    --regid snap_daemon \
+    -- \
+    mkdir -p "${HOME_DIR}/.mongodb/mongosh"
+
 "${SNAP}/usr/bin/setpriv" \
     --clear-groups \
     --reuid snap_daemon \
