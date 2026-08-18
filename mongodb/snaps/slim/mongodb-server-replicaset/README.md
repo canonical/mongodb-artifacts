@@ -36,7 +36,7 @@ options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/
 Configure the `mongod` service using the `mongod-args`.
 
 ```bash
-sudo snap set mongodb-server-replicaset mongod-args="--port <PORT>"
+sudo snap set mongodb-server-replicaset mongod-args="--replSet=rs0 --port <PORT>"
 ```
 
 Start the service:
