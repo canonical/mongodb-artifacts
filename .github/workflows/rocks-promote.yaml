@@ -1,0 +1,55 @@
+name: Promote rock in GHCR
+
+run-name: Promote ${{ inputs.image }}:${{ inputs.source_tag }} to ${{ inputs.target_tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: GHCR image to promote
+        required: true
+        type: choice
+        options:
+          - mongodb-server-sharded
+          - mongodb-server-replicaset
+          - mongos
+      source_tag:
+        description: Existing GHCR tag to promote (for example, 8.0.23-10-24.04_edge)
+        required: true
+        type: string
+      target_tag:
+        description: New GHCR tag to create (for example, 8.0.23-10-24.04_edge_beta)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  promote:
+    name: Copy manifest to the promotion tag
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: ghcr.io/canonical/${{ inputs.image }}
+      SOURCE_TAG: ${{ inputs.source_tag }}
+      TARGET_TAG: ${{ inputs.target_tag }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Promote image
+        run: |
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${TARGET_TAG}" \
+            "${IMAGE}:${SOURCE_TAG}"
+
+      - name: Verify promoted image
+        run: docker buildx imagetools inspect "${IMAGE}:${TARGET_TAG}"
