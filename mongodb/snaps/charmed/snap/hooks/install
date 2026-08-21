@@ -11,6 +11,7 @@ export PBM_CONF="${SNAP_DATA}"/etc/pbm
 export VAULT_CONF="${SNAP_DATA}"/etc/vault
 export DATA="${SNAP_COMMON}"/var/lib/mongodb
 export LOGS="${SNAP_COMMON}"/var/log/mongodb
+export PBM_LOGS="${SNAP_COMMON}"/var/log/pbm
 export VAULT_LOGS="${SNAP_COMMON}"/var/log/vault
 export HOME_DIR="${SNAP_DATA}"/home
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
@@ -21,6 +22,7 @@ export VAULT_CONFIG_FILE="${VAULT_CONF}"/agent-config.hcl
 mkdir -p $DATA
 mkdir -p $LOGS
 mkdir -p $VAULT_LOGS
+mkdir -p $PBM_LOGS
 mkdir -p $PBM_CONF
 mkdir -p $CONF
 mkdir -p $GSS
@@ -50,6 +52,11 @@ fi
 if [ stat -c '%u' "$VAULT_LOGS" == 0 ]; then
     chmod -R 770 "${SNAP_COMMON}"
     chmod g+s "$VAULT_LOGS"/*
+fi
+
+if [ stat -c '%u' "$PBM_LOGS" == 0 ]; then
+    chmod -R 770 "${SNAP_COMMON}"
+    chmod g+s "$PBM_LOGS"/*
 fi
 
 chown -R 584788:root "${SNAP_COMMON}"/*
