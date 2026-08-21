@@ -20,6 +20,6 @@ all_files=("${snaps[@]}" "${rocks[@]}")
 
 
 for file in "${all_files[@]}"; do
-    VERSION="$1" yq -i '.version = strenv(VERSION)' $file
+    VERSION="$1" /snap/bin/yq -i '.version = strenv(VERSION)' $file
 done
 

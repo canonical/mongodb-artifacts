@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: mongodb-server-sharded # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.23-10" # just for humans. Semantic versioning is recommended
+version: "8.0.28-12" # just for humans. Semantic versioning is recommended
 summary: Sharded MongoDB server in a rock. # 79 char long summary
 description: |
   Sharded MongoDB server packages a sharded MongoDB topology,
