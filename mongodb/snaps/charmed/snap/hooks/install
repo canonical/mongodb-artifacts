@@ -17,6 +17,7 @@ export HOME_DIR="${SNAP_DATA}"/home
 export MONGO_CONFIG_FILE="${CONF}"/mongod.conf
 export MONGOS_CONFIG_FILE="${CONF}"/mongos.conf
 export VAULT_CONFIG_FILE="${VAULT_CONF}"/agent-config.hcl
+export PBM_CONFIG_FILE="${PBM_CONF}"/pbm-agent.yaml
 
 # Create the necessary parent directories 
 mkdir -p $DATA
@@ -74,6 +75,13 @@ cp -r ${SNAP}/etc/mongod.conf ${MONGOS_CONFIG_FILE}
 echo "vault configuration file does not exist."
 echo "copying default config to ${VAULT_CONFIG_FILE}"
 cp -r ${SNAP}/vault.hcl ${VAULT_CONFIG_FILE}
+
+# Create the PBM config file and fill it with proper values.
+echo "PBM agent configuration file does not exist."
+echo "creating default config to ${PBM_CONFIG_FILE}"
+echo "{\"log\": {\"path\": \"${PBM_LOGS}/pbm-agent.json\", \"level\": \"I\", \"json\": true}}" | yq -y | tee ${PBM_CONFIG_FILE}
+
+
 
 # mongod.conf default values are not consistent with the snap directory system.
 yq -i -Y ".processManagement.fork = false" ${MONGO_CONFIG_FILE}

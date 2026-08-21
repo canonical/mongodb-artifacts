@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if ! type "yq" > /dev/null; then
+if ! type "/usr/bin/yq" > /dev/null; then
     echo "Missing yq, please install."
     exit 1
 fi
@@ -20,6 +20,6 @@ all_files=("${snaps[@]}" "${rocks[@]}")
 
 
 for file in "${all_files[@]}"; do
-    VERSION="$1" /snap/bin/yq -i '.version = strenv(VERSION)' $file
+    VERSION="$1" /usr/bin/yq -Y -i '.version = strenv(VERSION)' $file
 done
 

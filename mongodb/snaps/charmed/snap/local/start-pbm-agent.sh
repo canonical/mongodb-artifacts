@@ -9,4 +9,4 @@ exec "${SNAP}"/usr/bin/setpriv \
         --clear-groups \
         --reuid snap_daemon \
         --regid snap_daemon -- \
-        "$SNAP/usr/bin/pbm-agent" 
+        "$SNAP/usr/bin/pbm-agent" -f ${SNAP_DATA}/etc/pbm/pbm-agent.yaml
