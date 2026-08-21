@@ -87,7 +87,7 @@ parts:
       echo $BODY | yq -y | tee ${pbm_config_file}
 
       chown -R 584788:584788 "${pbm_conf}"
-      
+
       # enable security monitoring
       rocks=usr/share/rocks/
       mkdir -p ${rocks}
