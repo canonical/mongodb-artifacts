@@ -70,6 +70,14 @@ parts:
 
       chown -R 584788:584788 "${conf}"
 
+      conf_pbm="etc/pbm"
+      pbm_config_file="etc/pbm/pbm-agent.yaml
+
+      mkdir -p $CRAFT_PRIME/$conf_pbm
+      echo "{\"log\": {\"path\": \"${PBM_LOGS}/pbm-agent.json\", \"level\": \"I\", \"json\": true}}" | yq -y | tee ${pbm_config_file}
+
+      chown -R 584788:584788 "${pbm_conf}"
+      
       # enable security monitoring
       rocks=usr/share/rocks/
       mkdir -p ${rocks}
