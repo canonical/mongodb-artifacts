@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: charmed-mongodb # the name of your rock
 base: ubuntu@24.04 # the base environment for this rock
-version: "8.0.23-10" # just for humans. Semantic versioning is recommended
+version: "8.0.28-12" # just for humans. Semantic versioning is recommended
 summary: MongoDB in a rock. # 79 char long summary
 description: |
   MongoDB is a source-available cross-platform
@@ -69,6 +69,24 @@ parts:
       yq -i -Y "del(.storage)" "${mongos_config_file}"
 
       chown -R 584788:584788 "${conf}"
+
+      conf_pbm="etc/pbm"
+      pbm_config_file="etc/pbm/pbm-agent.yaml"
+
+      mkdir -p $CRAFT_PRIME/$conf_pbm
+      BODY=$(cat <<'EOF'
+      {
+        "log": {
+          "path": "/var/log/pbm/pbm-agent.json",
+          "level": "I",
+          "json": true
+        }
+      }
+      EOF
+      )
+      echo $BODY | yq -y | tee ${pbm_config_file}
+
+      chown -R 584788:584788 "${conf_pbm}"
 
       # enable security monitoring
       rocks=usr/share/rocks/

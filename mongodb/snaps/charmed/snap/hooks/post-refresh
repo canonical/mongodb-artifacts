@@ -5,15 +5,19 @@ set -eux
 
 export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export CONF="${SNAP_DATA}/etc/mongod"
+export LOGS_DIR="${SNAP_COMMON}/var/log"
 export VAULT_CONF="${SNAP_DATA}/etc/vault"
+export PBM_CONF="${SNAP_DATA}/etc/pbm"
 export ETC="${SNAP_DATA}/etc/"
 export MONGOS_CONFIG_FILE="${CONF}/mongos.conf"
 export LOGS="${SNAP_COMMON}/var/log/mongodb"
 export VAULT_LOGS="${SNAP_COMMON}/var/log/vault"
+export PBM_LOGS="${SNAP_COMMON}/var/log/pbm"
 export LDAP_CONF_DIR="${SNAP_DATA}/etc/ldap/"
 export VAULT_CONFIG_FILE="${VAULT_CONF}/agent-config.hcl"
 export GSS="${SNAP_DATA}/etc/gss"
 export HOME_DIR="${SNAP_DATA}/home"
+export PBM_CONFIG_FILE="${PBM_CONF}/pbm-agent.yaml"
 
 if [ ! -f $MONGOS_CONFIG_FILE ]; then
     # Copy over the mongos.conf and create needed directories/files
@@ -84,6 +88,18 @@ if [ ! -f "${GSS}/mech" ]; then
     chown -R 584788:root "${ETC}"
 fi
 
+if [ ! -f "$PBM_CONFIG_FILE"]; then
+    # Grant enough permissions to create files
+    chown root:snap_daemon "$ETC"
+    mkdir -p "${PBM_CONF}"
+
+    echo "{\"log\": {\"path\": \"${PBM_LOGS}/pbm-agent.json\", \"level\": \"I\", \"json\": true}}" | yq -y | tee ${PBM_CONFIG_FILE}
+
+
+    # Change ownership of snap directories to allow snap_daemon to read/write
+    chown -R 584788:root "${ETC}"
+fi
+
 # Create the snap_daemon home directories for installations upgrading from a
 # revision that predates them.
 
@@ -94,8 +110,9 @@ fi
 
 # Second ensure root ownership
 chown root:snap_daemon "${HOME_DIR}"
+chown root:snap_daemon "${LOGS_DIR}"
 
-DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh") 
+DIRECTORIES=("${HOME_DIR}/.cache" "${HOME_DIR}/.config" "${HOME_DIR}/.mongodb/mongosh" "${PBM_LOGS}") 
 
 # Third create all directories.
 for directory in ${DIRECTORIES[@]}; do
@@ -106,3 +123,4 @@ for directory in ${DIRECTORIES[@]}; do
 done
 
 chown 584788:root ${HOME_DIR}
+chown 584788:root ${LOGS_DIR}
