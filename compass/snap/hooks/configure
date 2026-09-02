@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Installation hook for mongodb-cmopass snap
+
+set -eux
+export ETC="${SNAP_DATA}/etc"
+export MONGODB_COMPASS_CONFIG="${ETC}/mongodb-compass.conf"
+
+mkdir -p $ETC
+
+cp -r ${SNAP}/etc/mongodb-compass.conf ${MONGODB_COMPASS_CONFIG}
