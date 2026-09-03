@@ -71,9 +71,9 @@ parts:
     after:
       - wrapper
     plugin: nil
-    source: https://github.com/mongodb-js/compass
+    source: https://git.launchpad.net/~data-platform/mongodb-compass/+git/compass
     source-type: git
-    source-tag: v1.49.15
+    source-tag: v1.50.0
     build-packages:
       - cmake
       - libkrb5-dev
@@ -89,6 +89,7 @@ parts:
       - libsecret-1-0
       - libsecret-tools
       - gnome-keyring
+      - fonts-freefont-ttf
       - util-linux
       - openssl
       - libnss3
@@ -106,6 +107,7 @@ parts:
       - libgl1
       - libglvnd0
       - libglx0
+      - libadwaita-1-0
     override-build: |
       echo "process.exit(0)" > packages/compass/scripts/download-csfle.js
       echo "process.exit(0)" > packages/compass/scripts/download-fonts.js
@@ -146,7 +148,6 @@ parts:
     plugin: nil
     stage-packages:
       - zenity
-      - libadwaita-1-0
     prime:
       - usr/bin/zenity
   snap-license:

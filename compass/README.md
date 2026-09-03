@@ -18,17 +18,24 @@ or:
 sudo snap install mongodb-compass --channel=latest/edge
 ```
 
+You can run it with
+
+```bash
+mongodb-compass [uri]
+```
+
+If `uri` is specified, MongoDB Compass will connect to the database specified directly.
+
 ## Contributing
 
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
 
 ## License
 
-The MongoDB Replicaset Server Snap is free software, distributed under the Apache Software License,
+The MongoDB Compass Snap is free software, distributed under the Apache Software License,
 version 2.0. See [LICENSE](LICENSE) for more information.
 
 ## Trademark Notice
 
 MongoDB is a trademark or registered trademark of MongoDB, Inc.
-Percona is a trademark or registered trademark of Percona LLC.
 Other trademarks are property of their respective owners.
