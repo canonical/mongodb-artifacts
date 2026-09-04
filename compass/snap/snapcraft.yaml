@@ -1,6 +1,6 @@
 name: mongodb-compass
 title: MongoDB Compass
-base: core26 # the base snap is the execution environment for this snap
+base: core24 # the base snap is the execution environment for this snap
 adopt-info: mongodb-compass
 summary: MongoDB Compass in a snap. # 79 char long summary
 description: |
@@ -43,7 +43,7 @@ apps:
       GTK_USE_PORTAL: "1"
     desktop: usr/share/applications/mongodb-compass.desktop
     command: launcher.sh
-    extensions: [gpu]
+    extensions: [gpu, gnome]
     plugs:
       - browser-support
       - compass-posix-mq
@@ -93,23 +93,10 @@ parts:
       - fonts-freefont-ttf
       - util-linux
       - openssl
-      - libatk1.0-0t64
-      - libatk-bridge2.0-0t64
-      - libatspi2.0-0 
-      - libcairo2
+      - libbson-1.0-0t64
       - libnspr4
-      - libgbm1
-      - libasound2t64
-      - libatspi2.0-0t64
-      - libgl1
-      - libglvnd0
-      - libglx0
-      - libglib2.0-0t64
-      - libgdk-pixbuf-2.0-0
-      - libgtk-3-0t64
       - libnotify4
       - libnss3
-      - libpango-1.0-0
       - libx11-6
       - libxcb1
       - libxcb-shm0
