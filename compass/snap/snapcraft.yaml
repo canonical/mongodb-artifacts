@@ -43,7 +43,7 @@ apps:
       GTK_USE_PORTAL: "1"
     desktop: usr/share/applications/mongodb-compass.desktop
     command: launcher.sh
-    extensions: [gpu, gnome]
+    extensions: [gnome]
     plugs:
       - browser-support
       - compass-posix-mq
@@ -128,6 +128,7 @@ parts:
     prime:
       - usr/*
       - -usr/lib/mongodb-compass/chrome-sandbox
+      - licenses/LICENSE-mongodb-compass
     override-prime: |
       craftctl default
       # Staged schemas ship uncompiled; GTK needs the compiled cache.
