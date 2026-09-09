@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installation hook for mongodb-cmopass snap
+# Installation hook for mongodb-compass snap
 
 set -eux
 export ETC="${SNAP_DATA}/etc"
