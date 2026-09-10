@@ -109,7 +109,7 @@ parts:
 
       craftctl set version=${VERSION}
 
-      dpkg -x packages/compass/dist/mongodb-compass_${VERSION}_${CRAFT_ARCH_BUILD_FOR}.deb ${CRAFT_PART_INSTALL}
+      dpkg -x packages/compass/dist/mongodb-compass_${VERSION}_*.deb ${CRAFT_PART_INSTALL}
       sed -i 's|Icon=mongodb-compass|Icon=/usr/share/pixmaps/mongodb-compass.png|' \
         ${CRAFT_PART_INSTALL}/usr/share/applications/mongodb-compass.desktop
 
