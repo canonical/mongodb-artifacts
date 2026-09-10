@@ -4,8 +4,9 @@ base: core24 # the base snap is the execution environment for this snap
 adopt-info: mongodb-compass
 summary: MongoDB Compass in a snap. # 79 char long summary
 description: |
-  MongoDB Compass lets builders explore their data, run queries and aggregations,
-  and refine their data models through an easy-to-use visual interface.
+  MongoDB Compass lets builders explore their data, run queries and
+  aggregations, and refine their data models through an easy-to-use visual
+  interface.
 license: Apache-2.0
 grade: stable # must be 'stable' to release into candidate/stable channels
 confinement: strict
@@ -19,19 +20,9 @@ contact: https://github.com/canonical/mongodb-artifacts/issues/new
 issues: https://github.com/canonical/mongodb-artifacts/issues/new
 source-code: https://github.com/canonical/mongodb-artifacts/tree/8-24.04/edge/compass
 plugs:
-  compass-posix-mq:
-    interface: posix-mq
-    posix-mq: compass
   shmem:
     interface: shared-memory
     private: true
-slots:
-  compass-posix-mq-provider:
-    interface: posix-mq
-    posix-mq: compass
-    path: /compass
-    permissions:
-      - read
 layout:
   /etc/mongodb-compass.conf:
     bind-file: $SNAP_DATA/etc/mongodb-compass.conf
@@ -46,7 +37,6 @@ apps:
     extensions: [gnome]
     plugs:
       - browser-support
-      - compass-posix-mq
       - desktop
       - desktop-legacy
       - network
@@ -120,7 +110,8 @@ parts:
       craftctl set version=${VERSION}
 
       dpkg -x packages/compass/dist/mongodb-compass_${VERSION}_${CRAFT_ARCH_BUILD_FOR}.deb ${CRAFT_PART_INSTALL}
-      sed -i 's|Icon=mongodb-compass|Icon=/usr/share/pixmaps/mongodb-compass.png|' ${CRAFT_PART_INSTALL}/usr/share/applications/mongodb-compass.desktop
+      sed -i 's|Icon=mongodb-compass|Icon=/usr/share/pixmaps/mongodb-compass.png|' \
+        ${CRAFT_PART_INSTALL}/usr/share/applications/mongodb-compass.desktop
 
       craftctl default
     organize:
