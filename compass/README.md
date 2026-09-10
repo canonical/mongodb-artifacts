@@ -21,10 +21,29 @@ sudo snap install mongodb-compass --channel=latest/edge
 You can run it with
 
 ```bash
-mongodb-compass [uri]
+mongodb-compass
 ```
 
-If `uri` is specified, MongoDB Compass will connect to the database specified directly.
+Or use the icon in your system tray.
+
+## Advanced Usage
+
+MongoDB Compass is provided with a few default configurations:
+
+* networkTraffic: false
+* enableAtlasSignIn: false
+* enableGenAIFeatures: false
+* enableGenAISampleDocumentPassing: false
+* enableMaps: false
+
+The following ones are disabled and should not be enabled, they refer to upstream MongoDB Compass feedback panel, telemetry and automated updates.
+
+* enableFeedbackPanel: false
+* trackUsageStatistics: false
+* autoUpdates: false
+
+To update the default configuration (provided to all users of MongoDB Compass on this machine), update the file
+`/var/snap/mongodb-compass/current/etc/mongodb-compass.conf`. This requires to be root on the machine.
 
 ## Contributing
 
