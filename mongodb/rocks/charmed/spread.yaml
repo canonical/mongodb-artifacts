@@ -25,7 +25,6 @@ suites:
 
       snap list charmcraft || snap install charmcraft --classic
       snap list concierge || snap install concierge --classic
-      snap list docker || snap install docker
       snap list rockcraft || snap install rockcraft --classic
 
       export PATH="/snap/bin:$PATH:$(pipx environment --value PIPX_BIN_DIR)"
@@ -43,23 +42,10 @@ suites:
       ROCK_APP_VERSION="${ROCK_FILE#"${ROCK_NAME}_"}"
       ROCK_APP_VERSION="${ROCK_APP_VERSION%_*}"
       ROCK_VERSION="${ROCK_APP_VERSION%%-*}"
-      ROCK_IMAGE="ghcr.io/canonical/${ROCK_NAME}:spreadtest"
       ROCK_DIGEST="$(rockcraft.skopeo inspect \
         --format '{{.Digest}}' \
         "oci-archive:${CRAFT_ARTIFACT}")"
       ROCK_IMAGE_SOURCE="ghcr.io/canonical/${ROCK_NAME}@${ROCK_DIGEST}"
-
-      # Load the rock built by 'rockcraft test' into Docker.
-      rockcraft.skopeo --insecure-policy copy \
-        "oci-archive:${CRAFT_ARTIFACT}" \
-        "docker-daemon:${ROCK_IMAGE}"
-
-      # Juju deploys the charm workload into MicroK8s, which uses containerd
-      # rather than Docker. Keep a local tarball of the same image tag so each
-      # spread task can import it into MicroK8s before running pytest.
-      docker save \
-        "$ROCK_IMAGE" \
-        --output "$SPREAD_PATH/${ROCK_NAME}-spreadtest.tar"
 
       git clone \
         --single-branch \
@@ -80,10 +66,10 @@ suites:
 
       export PATH="/snap/bin:$PATH:$(pipx environment --value PIPX_BIN_DIR)"
       export CONCIERGE_JUJU_CHANNEL="3.6/stable"
-      export CONCIERGE_MICROK8S_CHANNEL="1.35-strict/stable"
+      export CONCIERGE_K8S_CHANNEL="1.35-classic/stable"
 
       concierge prepare --trace -c "$SPREAD_PATH/operator/concierge.yaml"
-      juju set-model-constraints arch="$(dpkg --print-architecture)"
+      juju set-model-constraints -m concierge-k8s:testing arch="$(dpkg --print-architecture)"
 
       ROCK_FILE="$(basename "$CRAFT_ARTIFACT")"
       ROCK_NAME="${ROCK_FILE%%_*}"
@@ -93,13 +79,18 @@ suites:
       ROCK_IMAGE="ghcr.io/canonical/${ROCK_NAME}:spreadtest"
       ROCK_IMAGE_SOURCE="ghcr.io/canonical/${ROCK_NAME}@${ROCK_DIGEST}"
 
-      microk8s ctr image import \
-        --digests \
-        "$SPREAD_PATH/${ROCK_NAME}-spreadtest.tar"
-      microk8s ctr images tag \
+      # Import the OCI rock directly into Kubernetes's containerd namespace.
+      /snap/k8s/current/bin/ctr \
+        --address /run/containerd/containerd.sock \
+        --namespace k8s.io images import \
+        --digests --base-name "ghcr.io/canonical/${ROCK_NAME}" \
+        "$CRAFT_ARTIFACT"
+      /snap/k8s/current/bin/ctr \
+        --address /run/containerd/containerd.sock \
+        --namespace k8s.io images tag \
         --force \
-        "$ROCK_IMAGE" \
-        "$ROCK_IMAGE_SOURCE"
+        "$ROCK_IMAGE_SOURCE" \
+        "$ROCK_IMAGE"
     restore-each: |
       export PATH="/snap/bin:$PATH:$(pipx environment --value PIPX_BIN_DIR)"
 
@@ -108,8 +99,8 @@ suites:
         --no-wait \
         --destroy-storage \
         --no-prompt \
-        concierge-microk8s:testing || true
-      juju kill-controller --no-prompt concierge-microk8s || true
+        concierge-k8s:testing || true
+      juju kill-controller --no-prompt concierge-k8s || true
 
 exclude:
   - .git
