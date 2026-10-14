@@ -34,6 +34,8 @@ parts:
       - libbrotli1
       - logrotate
       - libldap-common
+    organize:
+      usr/share/doc/logrotate/copyright: licenses/LICENSE-logrotate
   non-root-user:
     plugin: nil
     after: [mongo-snap]
@@ -80,12 +82,14 @@ parts:
       cp snap.charmed-mongodb/manifest.yaml ${rocks}
       cp snap.charmed-mongodb/snapcraft.yaml ${rocks}
 
-  rock-license:
+  licenses:
     plugin: dump
     source: licenses
+    source-type: local
     organize:
-      LICENSE-rock: licenses/LICENSE-rock
-      usr/share/doc/logrotate/copyright: licenses/COPYRIGHT-logrotate
+      "*": licenses/
+    stage:
+      - licenses/*
 
   entry:
     plugin: dump
