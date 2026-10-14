@@ -21,6 +21,19 @@ execute: |
       kubectl describe pods --all-namespaces
     } > "$log_dir/k8s-state.txt" 2>&1
 
+    # Managed-instance files are not automatically copied to the runner.
+    # Print diagnostics so they survive in the CI and Rockcraft logs.
+    {
+      for pod in $(kubectl get pods -n testing -o name); do
+        kubectl logs -n testing "$pod" --all-containers=true \
+          --prefix=true --timestamps=true --tail=100
+      done
+    } > "$log_dir/workload-logs.txt" 2>&1
+
+    for name in juju-status k8s-state workload-logs; do
+      printf "\nDiagnostics: %s\n" "$name"
+      cat "$log_dir/$name.txt"
+    done
     printf "Spread diagnostics written to %s\n" "$log_dir"
   }
 
