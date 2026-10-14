@@ -69,7 +69,8 @@ suites:
       export CONCIERGE_K8S_CHANNEL="1.35-classic/stable"
 
       concierge prepare --trace -c "$SPREAD_PATH/operator/concierge.yaml"
-      juju set-model-constraints -m concierge-k8s:testing arch="$(dpkg --print-architecture)"
+      juju set-model-constraints -m concierge-k8s:testing \
+        arch="$(dpkg --print-architecture)"
 
       ROCK_FILE="$(basename "$CRAFT_ARTIFACT")"
       ROCK_NAME="${ROCK_FILE%%_*}"
@@ -85,10 +86,21 @@ suites:
         --namespace k8s.io images import \
         --digests --base-name "ghcr.io/canonical/${ROCK_NAME}" \
         "$CRAFT_ARTIFACT"
+      # Import naming differs between containerd versions. Resolve the image
+      # by manifest digest rather than assuming a digest-named tag exists.
+      IMPORTED_IMAGE="$(/snap/k8s/current/bin/ctr \
+        --address /run/containerd/containerd.sock \
+        --namespace k8s.io images list | \
+        awk -v digest="$ROCK_DIGEST" '$3 == digest {print $1; exit}')"
+      if [ -z "$IMPORTED_IMAGE" ]; then
+        echo "Imported rock image not found for digest $ROCK_DIGEST" >&2
+        exit 1
+      fi
       /snap/k8s/current/bin/ctr \
         --address /run/containerd/containerd.sock \
         --namespace k8s.io images tag \
         --force \
+        "$IMPORTED_IMAGE" \
         "$ROCK_IMAGE_SOURCE" \
         "$ROCK_IMAGE"
     restore-each: |

@@ -25,7 +25,8 @@ execute: |
   }
 
   cd "$SPREAD_PATH/operator"
-  tox -e integration -- tests/integration/test_charm.py --model concierge-k8s:testing || {
+  tox -e integration -- tests/integration/test_charm.py \
+    --model concierge-k8s:testing || {
     exit_code="$?"
     dump_debug
     exit "$exit_code"
