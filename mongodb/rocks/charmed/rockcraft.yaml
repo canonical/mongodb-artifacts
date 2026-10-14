@@ -38,8 +38,6 @@ parts:
       - libbrotli1
       - logrotate
       - libldap-common
-    organize:
-      usr/share/doc/logrotate/copyright: licenses/COPYRIGHT-logrotate
   non-root-user:
     plugin: nil
     after: [mongo-snap]

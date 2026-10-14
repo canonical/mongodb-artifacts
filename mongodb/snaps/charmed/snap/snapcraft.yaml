@@ -223,11 +223,6 @@ parts:
       - yq
     stage-snaps:
       - vault
-    organize:
-      usr/share/doc/percona-backup-mongodb/copyright:
-        licenses/LICENSE-percona-backup-mongodb
-      usr/share/doc/mongodb-exporter/copyright:
-        licenses/LICENSE-mongodb-exporter
   wrapper:
     plugin: dump
     source: snap/local
