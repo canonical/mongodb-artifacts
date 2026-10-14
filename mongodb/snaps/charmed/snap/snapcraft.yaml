@@ -210,26 +210,14 @@ parts:
       - libsasl2-modules
     stage-snaps:
       - yq
-    override-prime: |
-      craftctl default
-      LICENSE_LOC=usr/share/doc/percona-server-mongodb
-      zcat $CRAFT_PRIME/$LICENSE_LOC/LICENSE-Community.txt.gz \
-        > $CRAFT_PRIME/licenses/LICENSE-percona-server
-    organize:
-      usr/share/doc/percona-backup-mongodb/copyright:
-        licenses/LICENSE-percona-backup-mongodb
-      usr/share/doc/mongodb-exporter/copyright:
-        licenses/LICENSE-mongodb-exporter
-      usr/share/doc/mongodb-shell/copyright:
-        licenses/LICENSE-mongodb-shell
   wrapper:
     plugin: dump
     source: snap/local
-  snap-license:
+  licenses:
     plugin: dump
-    source: .
+    source: snap/licenses
     source-type: local
-    stage:
-      - licenses/LICENSE-snap
     organize:
-      LICENSE: licenses/LICENSE-snap
+      "*": licenses/
+    stage:
+      - licenses/*
