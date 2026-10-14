@@ -125,7 +125,7 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## License
 The MongoDB Replicaset Server Snap is free software, distributed under the Apache Software License,
-version 2.0. See [LICENSE](LICENSE) for more information.
+version 2.0. See [LICENSE](snap/licenses/LICENSE-snap) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.
