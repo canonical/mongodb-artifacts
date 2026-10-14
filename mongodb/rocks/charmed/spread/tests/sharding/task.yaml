@@ -26,7 +26,7 @@ execute: |
 
   cd "$SPREAD_PATH/operator"
   tox -e integration -- tests/integration/test_sharding.py \
-    --model concierge-k8s:testing || {
+    --controller concierge-k8s --model testing || {
     exit_code="$?"
     dump_debug
     exit "$exit_code"
