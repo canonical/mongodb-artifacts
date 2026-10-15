@@ -93,7 +93,7 @@ def test_mongos_config_keyfile():
         snapcraft = yaml.safe_load(file)
     name = snapcraft["name"]
     keyfile = f"/var/snap/{name}/current/etc/mongodb-keyfile"
-    config_file = f"/var/snap/{name}/current/etc/mongod/mongos.conf"
+    config_file = f"/var/snap/{name}/common/etc/mongod/mongos.conf"
 
     config_content = subprocess.run(
         ["sudo", "cat", config_file],
@@ -192,3 +192,14 @@ def test_refresh():
             f"sudo snap install ./{snapcraft['name']}_{snapcraft['version']}_amd64.snap --dangerous".split(),
             check=True,
         )
+
+        for config in ("mongos.conf",):
+            subprocess.run(
+                [
+                    "sudo",
+                    "test",
+                    "-f",
+                    f"/var/snap/{snapcraft['name']}/common/etc/mongod/{config}",
+                ],
+                check=True,
+            )

@@ -49,8 +49,8 @@ details used throughout this guide:
 ### Configuration files
 The snap stores the MongoDB configuration files at:
 
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongos.conf`
+- `/var/snap/mongodb-server-sharded/common/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-sharded/common/etc/mongod/mongos.conf`
 
 Extra MongoDB arguments are passed through `mongod-args` and `mongos-args`. You can read more about the available
 options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/) and

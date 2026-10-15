@@ -24,4 +24,4 @@ fi
 
 # For security measures, daemons should not be run as sudo. Execute mongos as the non-sudo user: snap-daemon.
 exec $SNAP/usr/bin/setpriv --clear-groups --reuid snap_daemon \
-  --regid snap_daemon -- $SNAP/usr/bin/mongos --config ${SNAP_DATA}/etc/mongod/mongos.conf ${MONGOS_ARGS} "$@"
+  --regid snap_daemon -- $SNAP/usr/bin/mongos --config ${SNAP_COMMON}/etc/mongod/mongos.conf ${MONGOS_ARGS} "$@"
