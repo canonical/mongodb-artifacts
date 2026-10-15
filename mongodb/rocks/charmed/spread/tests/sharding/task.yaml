@@ -31,7 +31,28 @@ execute: |
       done
     } > "$log_dir/workload-logs.txt" 2>&1
 
-    for name in juju-status juju-debug-log k8s-state workload-logs; do
+    {
+      for pod in $(kubectl get pods -n testing -o name); do
+        containers="$(kubectl get -n testing "$pod" \
+          -o jsonpath='{.spec.containers[*].name}')"
+        case " $containers " in
+          *" mongod "*) ;;
+          *) continue ;;
+        esac
+        printf "\nMongoDB network diagnostics: %s\n" "$pod"
+        kubectl exec -n testing "$pod" -c mongod -- hostname
+        kubectl exec -n testing "$pod" -c mongod -- \
+          cat /etc/resolv.conf /etc/hosts /etc/mongod/mongod.conf
+        # Juju gives StatefulSet pods a <pod>.<app>-endpoints hostname.
+        pod_name="${pod#pod/}"
+        app_name="${pod_name%-*}"
+        kubectl exec -n testing "$pod" -c mongod -- \
+          getent hosts "$pod_name.$app_name-endpoints"
+      done
+    } > "$log_dir/mongodb-network.txt" 2>&1
+
+    for name in juju-status juju-debug-log k8s-state \
+      workload-logs mongodb-network; do
       printf "\nDiagnostics: %s\n" "$name"
       cat "$log_dir/$name.txt"
     done

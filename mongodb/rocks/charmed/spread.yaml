@@ -69,6 +69,22 @@ suites:
       export CONCIERGE_K8S_CHANNEL="1.35-classic/stable"
 
       concierge prepare --trace -c "$SPREAD_PATH/operator/concierge.yaml"
+
+      # Match the operator CI: node readiness precedes addon readiness.
+      for resource in \
+        deployment/cilium-operator \
+        deployment/coredns \
+        deployment/metrics-server \
+        daemonset/cilium \
+        daemonset/ck-storage-rawfile-csi-node \
+        statefulset/ck-storage-rawfile-csi-controller; do
+        if kubectl -n kube-system get "$resource" >/dev/null 2>&1; then
+          kubectl -n kube-system rollout status "$resource" --timeout=5m
+        else
+          echo "Skipping rollout status for missing $resource"
+        fi
+      done
+
       juju set-model-constraints -m concierge-k8s:testing \
         arch="$(dpkg --print-architecture)"
 

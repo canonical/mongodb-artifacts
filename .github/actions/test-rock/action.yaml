@@ -30,13 +30,23 @@ runs:
     # Fail if no spread.yaml is found.
     - name: Run spread tests
       shell: bash
+      env:
+        ROCK_NAME: ${{ inputs.rock-name }}
       working-directory: ${{ inputs.rock-path }}
       run: |
         if [ ! -f spread.yaml ]; then
           echo "No spread.yaml in ${{ inputs.rock-path }}; failing."
           exit 1
         fi
-        sg lxd -c "rockcraft test"
+        if [ "$ROCK_NAME" = charmed-mongodb ]; then
+          sg lxd -c \
+            "rockcraft test craft:ubuntu-24.04:spread/tests/replica-set" \
+            || exit "$?"
+          sg lxd -c \
+            "rockcraft test craft:ubuntu-24.04:spread/tests/sharding"
+        else
+          sg lxd -c "rockcraft test"
+        fi
 
     - name: Rockcraft logs
       if: ${{ success() || failure() }}
