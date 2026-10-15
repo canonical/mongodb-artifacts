@@ -72,7 +72,9 @@ allocate_lxdvm() {
     fi
 
     VM_NAME="${VM_NAME:-spread-${name}-${RANDOM}}"
-    DISK="${DISK:-20}"
+    # Kubernetes, the rock, and up to eight MongoDB units need more than
+    # 20 GiB: each MongoDB unit requests four 1 GiB volumes.
+    DISK="${DISK:-64}"
     CPU="${CPU:-4}"
     MEM="${MEM:-8}"
 
