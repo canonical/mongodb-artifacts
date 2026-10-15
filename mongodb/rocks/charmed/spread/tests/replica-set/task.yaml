@@ -13,7 +13,8 @@ execute: |
 
     juju status --relations --storage -m concierge-k8s:testing \
       > "$log_dir/juju-status.txt" 2>&1
-    juju debug-log --replay --no-tail -m concierge-k8s:testing \
+    juju debug-log --replay --no-tail --date --utc \
+      -m concierge-k8s:testing \
       > "$log_dir/juju-debug-log.txt" 2>&1
     {
       kubectl get pods --all-namespaces --output wide
@@ -30,7 +31,7 @@ execute: |
       done
     } > "$log_dir/workload-logs.txt" 2>&1
 
-    for name in juju-status k8s-state workload-logs; do
+    for name in juju-status juju-debug-log k8s-state workload-logs; do
       printf "\nDiagnostics: %s\n" "$name"
       cat "$log_dir/$name.txt"
     done
