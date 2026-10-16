@@ -82,17 +82,17 @@ suites:
         --channel="$CONCIERGE_K8S_CHANNEL"
       if ! k8s status >/dev/null 2>&1; then
         python3 -c '
-        import ipaddress, json, os, subprocess
-        network = ipaddress.ip_network(os.environ["POD_CIDR"])
-        routes = json.loads(subprocess.check_output(
-            ["ip", "-j", "-4", "route", "show", "table", "all"]))
-        for route in routes:
-            destination = route.get("dst", "default")
-            if destination == "default":
-                continue
-            existing = ipaddress.ip_network(destination, strict=False)
-            if network.overlaps(existing):
-                raise SystemExit(f"Pod CIDR overlaps host route: {route}")
+      import ipaddress, json, os, subprocess
+      network = ipaddress.ip_network(os.environ["POD_CIDR"])
+      routes = json.loads(subprocess.check_output(
+          ["ip", "-j", "-4", "route", "show", "table", "all"]))
+      for route in routes:
+          destination = route.get("dst", "default")
+          if destination == "default":
+              continue
+          existing = ipaddress.ip_network(destination, strict=False)
+          if network.overlaps(existing):
+              raise SystemExit(f"Pod CIDR overlaps host route: {route}")
         '
         # Preserve Concierge's handling of preinstalled containerd.
         systemctl stop containerd.service || true
