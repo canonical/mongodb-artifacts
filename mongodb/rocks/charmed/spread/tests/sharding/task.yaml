@@ -51,8 +51,58 @@ execute: |
       done
     } > "$log_dir/mongodb-network.txt" 2>&1
 
+    {
+      df -hT
+      ls -l /dev/loop-control /dev/loop*
+      losetup -a
+      losetup -f
+      lsblk
+      kubectl get pvc -A -o wide
+      kubectl get pv -o wide
+      kubectl get storageclass -o yaml
+      kubectl get volumeattachments -o wide
+      kubectl describe pvc -n testing
+      # Capture all CSI sidecars, CoreDNS, and Cilium on every node.
+      for pod in $(kubectl get pods -n kube-system -o name); do
+        case "$pod" in
+          *rawfile*|*coredns*|*cilium*)
+            printf "\nSystem workload logs: %s\n" "$pod"
+            timeout 60s kubectl logs -n kube-system "$pod" \
+              --all-containers=true --prefix=true --timestamps=true \
+              --tail=500
+            ;;
+        esac
+      done
+      journalctl -k --since '-45 minutes' --no-pager -n 300
+    } > "$log_dir/storage-system.txt" 2>&1
+
+    {
+      kubectl get service,endpointslice -n controller-concierge-k8s \
+        -o wide
+      kubectl get service,endpointslice -n kube-system -o wide
+      kubectl get networkpolicy -A -o yaml
+      kubectl get configmap -n kube-system -o name | \
+        while read -r config; do
+          case "$config" in
+            *coredns*) kubectl get -n kube-system "$config" -o yaml ;;
+          esac
+        done
+      # Init containers can exit before workload containers ever start.
+      for pod in $(kubectl get pods -n testing -o name); do
+        init_containers="$(kubectl get -n testing "$pod" \
+          -o jsonpath='{.spec.initContainers[*].name}')"
+        for container in $init_containers; do
+          printf "\nInit logs: %s/%s\n" "$pod" "$container"
+          timeout 30s kubectl logs -n testing "$pod" -c "$container" \
+            --timestamps=true --tail=200
+          timeout 30s kubectl logs -n testing "$pod" -c "$container" \
+            --previous --timestamps=true --tail=200
+        done
+      done
+    } > "$log_dir/dns-init.txt" 2>&1
+
     for name in juju-status juju-debug-log k8s-state \
-      workload-logs mongodb-network; do
+      workload-logs mongodb-network storage-system dns-init; do
       printf "\nDiagnostics: %s\n" "$name"
       cat "$log_dir/$name.txt"
     done
