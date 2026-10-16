@@ -11,21 +11,107 @@ execute: |
     log_dir="$(dirname "$CRAFT_ARTIFACT")/spread-logs/sharding"
     mkdir -p "$log_dir"
 
-    juju status --relations --storage -m concierge-microk8s:testing \
+    juju status --relations --storage -m concierge-k8s:testing \
       > "$log_dir/juju-status.txt" 2>&1
-    juju debug-log --replay --no-tail -m concierge-microk8s:testing \
+    juju debug-log --replay --no-tail --date --utc \
+      -m concierge-k8s:testing \
       > "$log_dir/juju-debug-log.txt" 2>&1
     {
-      microk8s kubectl get pods --all-namespaces --output wide
-      microk8s kubectl get events --all-namespaces --sort-by=.lastTimestamp
-      microk8s kubectl describe pods --all-namespaces
-    } > "$log_dir/microk8s-state.txt" 2>&1
+      kubectl get pods --all-namespaces --output wide
+      kubectl get events --all-namespaces --sort-by=.lastTimestamp
+      kubectl describe pods --all-namespaces
+    } > "$log_dir/k8s-state.txt" 2>&1
 
+    # Managed-instance files are not automatically copied to the runner.
+    # Print diagnostics so they survive in the CI and Rockcraft logs.
+    {
+      for pod in $(kubectl get pods -n testing -o name); do
+        kubectl logs -n testing "$pod" --all-containers=true \
+          --prefix=true --timestamps=true --tail=100
+      done
+    } > "$log_dir/workload-logs.txt" 2>&1
+
+    {
+      for pod in $(kubectl get pods -n testing -o name); do
+        containers="$(kubectl get -n testing "$pod" \
+          -o jsonpath='{.spec.containers[*].name}')"
+        case " $containers " in
+          *" mongod "*) ;;
+          *) continue ;;
+        esac
+        printf "\nMongoDB network diagnostics: %s\n" "$pod"
+        kubectl exec -n testing "$pod" -c mongod -- hostname
+        kubectl exec -n testing "$pod" -c mongod -- \
+          cat /etc/resolv.conf /etc/hosts /etc/mongod/mongod.conf
+        # Juju gives StatefulSet pods a <pod>.<app>-endpoints hostname.
+        pod_name="${pod#pod/}"
+        app_name="${pod_name%-*}"
+        kubectl exec -n testing "$pod" -c mongod -- \
+          getent hosts "$pod_name.$app_name-endpoints"
+      done
+    } > "$log_dir/mongodb-network.txt" 2>&1
+
+    {
+      df -hT
+      ls -l /dev/loop-control /dev/loop*
+      losetup -a
+      losetup -f
+      lsblk
+      kubectl get pvc -A -o wide
+      kubectl get pv -o wide
+      kubectl get storageclass -o yaml
+      kubectl get volumeattachments -o wide
+      kubectl describe pvc -n testing
+      # Capture all CSI sidecars, CoreDNS, and Cilium on every node.
+      for pod in $(kubectl get pods -n kube-system -o name); do
+        case "$pod" in
+          *rawfile*|*coredns*|*cilium*)
+            printf "\nSystem workload logs: %s\n" "$pod"
+            timeout 60s kubectl logs -n kube-system "$pod" \
+              --all-containers=true --prefix=true --timestamps=true \
+              --tail=500
+            ;;
+        esac
+      done
+      journalctl -k --since '-45 minutes' --no-pager -n 300
+    } > "$log_dir/storage-system.txt" 2>&1
+
+    {
+      kubectl get service,endpointslice -n controller-concierge-k8s \
+        -o wide
+      kubectl get service,endpointslice -n kube-system -o wide
+      kubectl get networkpolicy -A -o yaml
+      kubectl get configmap -n kube-system -o name | \
+        while read -r config; do
+          case "$config" in
+            *coredns*) kubectl get -n kube-system "$config" -o yaml ;;
+          esac
+        done
+      # Init containers can exit before workload containers ever start.
+      for pod in $(kubectl get pods -n testing -o name); do
+        init_containers="$(kubectl get -n testing "$pod" \
+          -o jsonpath='{.spec.initContainers[*].name}')"
+        for container in $init_containers; do
+          printf "\nInit logs: %s/%s\n" "$pod" "$container"
+          timeout 30s kubectl logs -n testing "$pod" -c "$container" \
+            --timestamps=true --tail=200
+          timeout 30s kubectl logs -n testing "$pod" -c "$container" \
+            --previous --timestamps=true --tail=200
+        done
+      done
+    } > "$log_dir/dns-init.txt" 2>&1
+
+    for name in juju-status juju-debug-log k8s-state \
+      workload-logs mongodb-network storage-system dns-init; do
+      printf "\nDiagnostics: %s\n" "$name"
+      cat "$log_dir/$name.txt"
+    done
     printf "Spread diagnostics written to %s\n" "$log_dir"
   }
 
   cd "$SPREAD_PATH/operator"
-  tox -e integration -- tests/integration/test_sharding.py --model testing || {
+  tox -e integration -- tests/integration/test_sharding.py \
+    --controller concierge-k8s --model testing || {
     exit_code="$?"
     dump_debug
     exit "$exit_code"
