@@ -68,6 +68,50 @@ suites:
       export CONCIERGE_JUJU_CHANNEL="3.6/stable"
       export CONCIERGE_K8S_CHANNEL="1.35-classic/stable"
 
+      # Match operator CI: Podman's CNI can assign early system pods to
+      # 10.88.0.0/16 before Cilium is ready, breaking cluster connectivity.
+      # Remove it before bootstrap so all pods use the Kubernetes CNI.
+      rm -f /etc/cni/net.d/87-podman-bridge.conflist
+
+      # The default pod CIDR overlaps Azure runner addresses (10.1.0.x).
+      # Check explicit host routes before bootstrapping a fresh cluster.
+      POD_CIDR=10.244.0.0/16
+      export POD_CIDR
+
+      snap list k8s || snap install k8s --classic \
+        --channel="$CONCIERGE_K8S_CHANNEL"
+      if ! k8s status >/dev/null 2>&1; then
+        python3 -c '
+        import ipaddress, json, os, subprocess
+        network = ipaddress.ip_network(os.environ["POD_CIDR"])
+        routes = json.loads(subprocess.check_output(
+            ["ip", "-j", "-4", "route", "show", "table", "all"]))
+        for route in routes:
+            destination = route.get("dst", "default")
+            if destination == "default":
+                continue
+            existing = ipaddress.ip_network(destination, strict=False)
+            if network.overlaps(existing):
+                raise SystemExit(f"Pod CIDR overlaps host route: {route}")
+        '
+        # Preserve Concierge's handling of preinstalled containerd.
+        systemctl stop containerd.service || true
+        if [ -S /run/containerd/containerd.sock ]; then
+          rm -f /run/containerd/containerd.sock
+        fi
+        printf '%s\n' \
+          "pod-cidr: $POD_CIDR" \
+          'cluster-config:' \
+          '  network: {enabled: true}' \
+          '  dns: {enabled: true}' \
+          '  local-storage: {enabled: true}' \
+          '  gateway: {enabled: true}' \
+          '  metrics-server: {enabled: true}' \
+          > /tmp/mongodb-test-k8s-bootstrap.yaml
+        k8s bootstrap --timeout 10m \
+          --file /tmp/mongodb-test-k8s-bootstrap.yaml
+      fi
+
       concierge prepare --trace -c "$SPREAD_PATH/operator/concierge.yaml"
 
       # Match the operator CI: node readiness precedes addon readiness.
@@ -84,6 +128,29 @@ suites:
           echo "Skipping rollout status for missing $resource"
         fi
       done
+
+      # Fail before deployment if a regular pod cannot resolve services.
+      kubectl run mongodb-test-dns --namespace testing \
+        --image=busybox:1.36 --restart=Never \
+        --command -- sleep 300
+      dns_result=0
+      kubectl wait -n testing --for=condition=Ready \
+        pod/mongodb-test-dns --timeout=120s || dns_result=$?
+      if [ "$dns_result" -eq 0 ]; then
+        kubectl exec -n testing mongodb-test-dns -- \
+          nslookup kubernetes.default.svc.cluster.local || dns_result=$?
+        kubectl exec -n testing mongodb-test-dns -- nslookup \
+          controller-service.controller-concierge-k8s.svc.cluster.local \
+          || dns_result=$?
+      fi
+      kubectl get pods -A -o wide
+      kubectl logs -n kube-system -l k8s-app=kube-dns \
+        --all-containers=true --tail=50 --prefix=true || true
+      kubectl delete pod -n testing mongodb-test-dns --wait=false
+      if [ "$dns_result" -ne 0 ]; then
+        echo "Cluster DNS preflight failed" >&2
+        exit "$dns_result"
+      fi
 
       juju set-model-constraints -m concierge-k8s:testing \
         arch="$(dpkg --print-architecture)"
