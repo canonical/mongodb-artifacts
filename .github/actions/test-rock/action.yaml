@@ -15,6 +15,43 @@ inputs:
 runs:
   using: composite
   steps:
+    # Charmed tests bootstrap Kubernetes on the runner. Slim tests need Docker.
+    - name: Purge Docker (GitHub hosted, charmed rock)
+      if: >-
+        ${{ inputs.rock-name == 'charmed-mongodb' &&
+            runner.environment != 'self-hosted' }}
+      shell: bash
+      run: |
+        sudo timeout 240s apt-get remove --purge -y \
+          docker-ce docker-ce-cli containerd.io docker.io containerd \
+          2>/dev/null || true
+        sudo nft flush ruleset
+        sudo ip link delete docker0 2>/dev/null || true
+
+    - name: Purge Docker (self hosted, charmed rock)
+      if: >-
+        ${{ inputs.rock-name == 'charmed-mongodb' &&
+            runner.environment == 'self-hosted' }}
+      shell: bash
+      run: |
+        sudo timeout 180s apt-get purge -y docker.io containerd \
+          2>/dev/null || true
+        sudo timeout 60s apt-get autoremove -y 2>/dev/null || true
+        for chain in DOCKER DOCKER-ISOLATION-STAGE-1 \
+          DOCKER-ISOLATION-STAGE-2 DOCKER-USER DOCKER-FORWARD; do
+          sudo iptables -D FORWARD -j "$chain" 2>/dev/null || true
+          sudo iptables -F "$chain" 2>/dev/null || true
+          sudo iptables -X "$chain" 2>/dev/null || true
+          sudo iptables -t nat -F "$chain" 2>/dev/null || true
+          sudo iptables -t nat -X "$chain" 2>/dev/null || true
+        done
+        sudo iptables -P FORWARD ACCEPT
+
+    - name: Remove Podman CNI bridge config (charmed rock)
+      if: ${{ inputs.rock-name == 'charmed-mongodb' }}
+      shell: bash
+      run: sudo rm -f /etc/cni/net.d/87-podman-bridge.conflist
+
     - name: Install Rockcraft
       shell: bash
       run: sudo snap install rockcraft --classic
