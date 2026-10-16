@@ -94,10 +94,17 @@ suites:
           if network.overlaps(existing):
               raise SystemExit(f"Pod CIDR overlaps host route: {route}")
         '
-        # Preserve Concierge's handling of preinstalled containerd.
-        systemctl stop containerd.service || true
-        if [ -S /run/containerd/containerd.sock ]; then
-          rm -f /run/containerd/containerd.sock
+        # Stop the runner's old runtime before handing the path to k8s.
+        for service in docker.socket docker.service containerd.service; do
+          if systemctl is-active --quiet "$service"; then
+            systemctl stop "$service"
+          fi
+        done
+        # k8s rejects the directory itself, even if no socket remains.
+        # Retain stale runtime files for diagnostics instead of deleting.
+        if [ -d /run/containerd ]; then
+          runtime_backup="$(mktemp -d /run/containerd-before-k8s.XXXXXX)"
+          mv /run/containerd "$runtime_backup/"
         fi
         printf '%s\n' \
           "pod-cidr: $POD_CIDR" \
