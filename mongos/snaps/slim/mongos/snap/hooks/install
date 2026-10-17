@@ -5,7 +5,7 @@ set -eux
 
 export PYTHONPATH="${SNAP}"/usr/lib/python3/dist-packages/
 export ETC="$SNAP_DATA"/etc
-export CONF="${SNAP_DATA}"/etc/mongod
+export CONF="${SNAP_COMMON}"/etc/mongod
 export GSS="${SNAP_DATA}"/etc/gss
 export DATA="${SNAP_COMMON}"/var/lib/mongodb
 export LOGS="${SNAP_COMMON}"/var/log/mongodb
@@ -77,6 +77,7 @@ sed -i '/^security:$/i #security:' "${MONGOS_CONFIG_FILE}"
 
 # Change ownership of snap directories to allow snap_daemon to read/write
 chown -R 584788:root "${SNAP_DATA}"/*
+chown -R 584788:root "${CONF}"
 
 if [ ! -s "${KEYFILE}" ]; then
     "${SNAP}/usr/bin/setpriv" \

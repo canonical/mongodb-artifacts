@@ -26,7 +26,7 @@ This snap delivers `mongod` components for a replica set deployment.
 ### Configuration files
 The snap stores the MongoDB configuration file at:
 
-- `/var/snap/mongodb-server-replicaset/current/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-replicaset/common/etc/mongod/mongod.conf`
 
 Extra MongoDB arguments are passed through `mongod-args`. You can read more about the available
 options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/).
