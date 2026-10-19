@@ -125,7 +125,7 @@ The snap stores the `mongos` configuration file at:
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
 
 ## License
-The Mongos Snap is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](LICENSE) for more information.
+The Mongos Snap is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](snap/licenses/LICENSE-snap) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.

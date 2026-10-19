@@ -318,7 +318,7 @@ docker exec mongo1 pebble services
 ## License
 
 The Replica Set MongoDB Server rock is free software, distributed under the Apache Software License,
-version 2.0. See [LICENSE](LICENSE) for more information. It installs and operates Percona Server
+version 2.0. See [LICENSE](licenses/LICENSE-rock) for more information. It installs and operates Percona Server
 for MongoDB, which is licensed under the Server Side Public License (SSPL) version 1.
 
 ## Trademark Notice
