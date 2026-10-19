@@ -15,7 +15,8 @@ export PID_FILE="${RUN}/mongod.pid"
 export KEYFILE="${ETC}"/mongodb-keyfile
 export KEYFILE_CONFIG="$(dirname "${SNAP_DATA}")/current/etc/mongodb-keyfile"
 
-# Create the necessary parent directories 
+# Create the necessary parent directories
+mkdir -p "${ETC}"
 mkdir -p $DATA
 mkdir -p $LOGS
 mkdir -p $CONF
