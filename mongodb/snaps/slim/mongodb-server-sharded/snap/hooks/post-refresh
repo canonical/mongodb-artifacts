@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Migrate configurations created before mongod.conf moved to SNAP_COMMON.
+
+set -eu
+
+for config in mongod.conf mongos.conf; do
+    legacy_config="${SNAP_DATA}/etc/mongod/${config}"
+    common_conf_directory="${SNAP_COMMON}/etc/mongod"
+    common_config="${common_conf_directory}/${config}"
+
+    # The config file used to be in the SNAP_DATA directory, but now it is in SNAP_COMMON.
+    # If the config file does not exist in SNAP_COMMON, copy it over from SNAP_DATA.
+    if [ ! -e "${common_config}" ]; then
+        mkdir -p "${common_conf_directory}"
+
+        chown root:snap_daemon "${common_conf_directory}"
+        cp "${legacy_config}" "${common_config}"
+        chmod --reference="${legacy_config}" "${common_config}"
+        chown -R 584788:root "${common_conf_directory}"
+    fi
+done
