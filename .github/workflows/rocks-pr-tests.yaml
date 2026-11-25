@@ -31,7 +31,6 @@ jobs:
           - label: ubuntu-24.04-arm   # arm64
             platform: arm64
     permissions:
-      actions: read
       contents: read
     steps:
       - uses: actions/checkout@v6
@@ -72,6 +71,5 @@ jobs:
       artifact-prefix: packed-rock
     secrets: inherit
     permissions:
-      actions: read
       contents: read
       security-events: write

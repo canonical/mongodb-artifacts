@@ -22,7 +22,6 @@ jobs:
       path-to-snap-project-directory: ${{ matrix.snap.path }}
       artifact-prefix: packed-snap-${{ matrix.snap.name }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read
 
   test-snaps:
@@ -73,5 +72,4 @@ jobs:
     secrets:
       snap-store-token: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read

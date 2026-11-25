@@ -47,7 +47,6 @@ jobs:
     secrets:
       SNAP_STORE_TOKEN_EDGE: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
-      actions: read
       contents: read
 
   # 3. Wait until the new revisions are available
@@ -78,6 +77,5 @@ jobs:
     with:
       snap-channel: 8/edge/pr-${{ github.event.pull_request.number }}
     permissions:
-      actions: read
       contents: read
       security-events: write

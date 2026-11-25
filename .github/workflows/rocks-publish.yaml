@@ -37,7 +37,6 @@ jobs:
           - ubuntu-24.04       # amd64
           - ubuntu-24.04-arm   # arm64
     permissions:
-      actions: read
       contents: read
     steps:
       - uses: actions/checkout@v6
@@ -62,7 +61,6 @@ jobs:
       artifact-prefix: packed-rock
     secrets: inherit
     permissions:
-      actions: read
       contents: read
       security-events: write
 
@@ -82,6 +80,5 @@ jobs:
       path-to-rock-directory: ${{ matrix.rock.path }}
       artifact-prefix: packed-rock-${{ matrix.rock.name }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
       packages: write  # Needed to publish to GitHub Container Registry
       contents: write  # Needed to create git tags
