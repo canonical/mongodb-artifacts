@@ -112,17 +112,6 @@ apps:
     plugs:
       - network
 parts:
-  mongos-license:
-    plugin: nil
-    stage-packages:
-      - percona-server-mongodb
-    override-prime: |
-      mkdir -p $CRAFT_PRIME/licenses
-      LICENSE_LOC=usr/share/doc/percona-server-mongodb
-      zcat $CRAFT_STAGE/$LICENSE_LOC/LICENSE-Community.txt.gz \
-        > $CRAFT_PRIME/licenses/LICENSE-percona-server
-    prime:
-      - licenses/LICENSE-percona-server
   mongos-conf:
     plugin: nil
     stage-packages:
@@ -141,16 +130,14 @@ parts:
       - libgssapi-krb5-2
       - jq
       - yq
-    organize:
-      usr/share/doc/mongodb-shell/copyright: licenses/LICENSE-mongodb-shell
   wrapper:
     plugin: dump
     source: snap/local
-  snap-license:
+  licenses:
     plugin: dump
-    source: .
+    source: snap/licenses
     source-type: local
-    stage:
-      - licenses/LICENSE-snap
     organize:
-      LICENSE: licenses/LICENSE-snap
+      "*": licenses/
+    stage:
+      - licenses/*

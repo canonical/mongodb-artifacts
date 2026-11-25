@@ -25,7 +25,7 @@ the config server replica set and routes operations to shards.
 ### Configuration files
 The snap stores the `mongos` configuration file at:
 
-- `/var/snap/mongos/current/etc/mongod/mongos.conf`
+- `/var/snap/mongos/common/etc/mongod/mongos.conf`
 
 Extra MongoDB arguments are passed through `mongos-args`. You can read more about the available
 options in the [`mongos`](https://www.mongodb.com/docs/manual/reference/program/mongos/) documentation.
@@ -119,13 +119,13 @@ Logs are stored in:
 ## Configuration files
 The snap stores the `mongos` configuration file at:
 
-- `/var/snap/mongos/current/etc/mongod/mongos.conf`
+- `/var/snap/mongos/common/etc/mongod/mongos.conf`
 
 ## Contributing
 Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
 
 ## License
-The Mongos Snap is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](LICENSE) for more information.
+The Mongos Snap is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](snap/licenses/LICENSE-snap) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.

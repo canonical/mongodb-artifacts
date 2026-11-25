@@ -49,8 +49,8 @@ details used throughout this guide:
 ### Configuration files
 The snap stores the MongoDB configuration files at:
 
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongod.conf`
-- `/var/snap/mongodb-server-sharded/current/etc/mongod/mongos.conf`
+- `/var/snap/mongodb-server-sharded/common/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-sharded/common/etc/mongod/mongos.conf`
 
 Extra MongoDB arguments are passed through `mongod-args` and `mongos-args`. You can read more about the available
 options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/) and
@@ -331,7 +331,7 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## License
 The Sharded MongoDB Server Snap is free software, distributed under the Apache
-Software License, version 2.0. See [LICENSE](LICENSE) for more information.
+Software License, version 2.0. See [LICENSE](snap/licenses/LICENSE-snap) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.

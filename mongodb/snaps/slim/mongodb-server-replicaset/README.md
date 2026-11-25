@@ -26,7 +26,7 @@ This snap delivers `mongod` components for a replica set deployment.
 ### Configuration files
 The snap stores the MongoDB configuration file at:
 
-- `/var/snap/mongodb-server-replicaset/current/etc/mongod/mongod.conf`
+- `/var/snap/mongodb-server-replicaset/common/etc/mongod/mongod.conf`
 
 Extra MongoDB arguments are passed through `mongod-args`. You can read more about the available
 options in the [`mongod`](https://www.mongodb.com/docs/manual/reference/program/mongod/).
@@ -125,7 +125,7 @@ Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## License
 The MongoDB Replicaset Server Snap is free software, distributed under the Apache Software License,
-version 2.0. See [LICENSE](LICENSE) for more information.
+version 2.0. See [LICENSE](snap/licenses/LICENSE-snap) for more information.
 
 ## Trademark Notice
 MongoDB is a trademark or registered trademark of MongoDB, Inc.
