@@ -32,3 +32,5 @@ jobs:
           )
 
           echo "rocks=$rocks" >> "$GITHUB_OUTPUT"
+    permissions: {}
+    cache-mode: none

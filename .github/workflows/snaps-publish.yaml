@@ -7,6 +7,8 @@ on:
 jobs:
   discover-snaps:
     uses: ./.github/workflows/snaps-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   build:
     name: Build snap | ${{ matrix.snap.name }}
@@ -21,6 +23,7 @@ jobs:
       artifact-prefix: packed-snap-${{ matrix.snap.name }}
     permissions:
       contents: read
+    cache-mode: none
 
   publish:
     name: Publish Snap | ${{ matrix.snap.name }}
@@ -40,3 +43,4 @@ jobs:
       snap-store-token: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
       contents: write  # Needed to create git tags
+    cache-mode: none

@@ -9,6 +9,8 @@ on:
 jobs:
   discover-snaps:
     uses: ./.github/workflows/snaps-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   build-snaps:
     name: Build snap | ${{ matrix.snap.name }}
@@ -23,6 +25,7 @@ jobs:
       artifact-prefix: packed-snap-${{ matrix.snap.name }}
     permissions:
       contents: read
+    cache-mode: none
 
   test-snaps:
     name: Smoke tests | ${{ matrix.snap.name }}
@@ -53,6 +56,7 @@ jobs:
       - name: Smoke Tests
         working-directory: ${{ matrix.snap.path }}
         run: tox run -e smoke
+    cache-mode: none
 
   publish-snaps:
     name: Publish snap to PR branch | ${{ matrix.snap.name }}
@@ -73,3 +77,4 @@ jobs:
       snap-store-token: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
       contents: read
+    cache-mode: none

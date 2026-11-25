@@ -101,3 +101,4 @@ jobs:
           name: trivy-sbom-report-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}
           path: dependency-results-${{ matrix.rock.name }}-${{ steps.scan-metadata.outputs.scan_suffix }}.sbom.json
           retention-days: 90
+    cache-mode: none

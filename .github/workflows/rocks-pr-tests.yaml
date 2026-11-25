@@ -16,6 +16,8 @@ on:
 jobs:
   discover-rocks:
     uses: ./.github/workflows/rocks-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   test-rocks:
     name: Build and test rock | ${{ matrix.rock.name }} | ${{ matrix.runner.label }}
@@ -59,6 +61,7 @@ jobs:
           name: packed-rock-${{ matrix.rock.name }}--platform-${{ matrix.runner.platform }}
           path: ${{ matrix.rock.path }}/*.rock
           if-no-files-found: error
+    cache-mode: none
 
   scan-rocks:
     name: Trivy scan
@@ -73,3 +76,4 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    cache-mode: none

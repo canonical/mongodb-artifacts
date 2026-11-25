@@ -7,6 +7,8 @@ on:
 jobs:
   discover-rocks:
     uses: ./.github/workflows/rocks-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   build:
     name: Build rock | ${{ matrix.rock.name }}
@@ -47,6 +49,7 @@ jobs:
           rock-name: ${{ matrix.rock.name }}
           rock-path: ${{ matrix.rock.path }}
           runner: ${{ matrix.runner }}
+    cache-mode: none
 
   # The build job already uploaded the artifact so we can use it for the trivy scan
   scan:
@@ -63,6 +66,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    cache-mode: none
 
   publish:
     name: Publish rock  | ${{ matrix.rock.name }}
@@ -82,3 +86,4 @@ jobs:
     permissions:
       packages: write  # Needed to publish to GitHub Container Registry
       contents: write  # Needed to create git tags
+    cache-mode: none
