@@ -20,8 +20,8 @@ jobs:
       path-to-rock-directory: ${{ matrix.rock.path }}
       artifact-prefix: packed-rock-${{ matrix.rock.name }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read
+    cache-mode: none
 
   test:
     name: Test rock | ${{ matrix.rock.name }} | ${{ matrix.runner }}
