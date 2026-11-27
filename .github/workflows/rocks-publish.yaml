@@ -7,6 +7,8 @@ on:
 jobs:
   discover-rocks:
     uses: ./.github/workflows/rocks-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   build:
     name: Build rock | ${{ matrix.rock.name }}
@@ -15,13 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_rock.yaml@v49.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_rock.yaml@v56.0.0
     with:
       path-to-rock-directory: ${{ matrix.rock.path }}
       artifact-prefix: packed-rock-${{ matrix.rock.name }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read
+    cache-mode: none
 
   test:
     name: Test rock | ${{ matrix.rock.name }} | ${{ matrix.runner }}
@@ -37,7 +39,6 @@ jobs:
           - ubuntu-24.04       # amd64
           - ubuntu-24.04-arm   # arm64
     permissions:
-      actions: read
       contents: read
     steps:
       - uses: actions/checkout@v6
@@ -48,6 +49,7 @@ jobs:
           rock-name: ${{ matrix.rock.name }}
           rock-path: ${{ matrix.rock.path }}
           runner: ${{ matrix.runner }}
+    cache-mode: none
 
   # The build job already uploaded the artifact so we can use it for the trivy scan
   scan:
@@ -62,9 +64,9 @@ jobs:
       artifact-prefix: packed-rock
     secrets: inherit
     permissions:
-      actions: read
       contents: read
       security-events: write
+    cache-mode: none
 
   publish:
     name: Publish rock  | ${{ matrix.rock.name }}
@@ -77,11 +79,11 @@ jobs:
       fail-fast: false
       matrix:
         rock: ${{ fromJSON(needs.discover-rocks.outputs.rocks) }}
-    uses: canonical/data-platform-workflows/.github/workflows/release_rock_edge.yaml@v49.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/release_rock_edge.yaml@v56.0.0
     with:
       path-to-rock-directory: ${{ matrix.rock.path }}
       artifact-prefix: packed-rock-${{ matrix.rock.name }}
     permissions:
-      actions: read  # Needed for GitHub API call to get workflow version
       packages: write  # Needed to publish to GitHub Container Registry
       contents: write  # Needed to create git tags
+    cache-mode: none

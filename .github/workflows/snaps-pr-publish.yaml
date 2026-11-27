@@ -9,6 +9,8 @@ on:
 jobs:
   discover-snaps:
     uses: ./.github/workflows/snaps-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   build-snaps:
     name: Build snap | ${{ matrix.snap.name }}
@@ -17,13 +19,13 @@ jobs:
       fail-fast: false
       matrix:
         snap: ${{ fromJSON(needs.discover-snaps.outputs.snaps) }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_snap.yaml@v49.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_snap.yaml@v56.0.0
     with:
       path-to-snap-project-directory: ${{ matrix.snap.path }}
       artifact-prefix: packed-snap-${{ matrix.snap.name }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read
+    cache-mode: none
 
   test-snaps:
     name: Smoke tests | ${{ matrix.snap.name }}
@@ -54,6 +56,7 @@ jobs:
       - name: Smoke Tests
         working-directory: ${{ matrix.snap.path }}
         run: tox run -e smoke
+    cache-mode: none
 
   publish-snaps:
     name: Publish snap to PR branch | ${{ matrix.snap.name }}
@@ -65,7 +68,7 @@ jobs:
       fail-fast: false
       matrix:
         snap: ${{ fromJSON(needs.discover-snaps.outputs.snaps) }}
-    uses: canonical/data-platform-workflows/.github/workflows/release_snap_pr.yaml@v49.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/release_snap_pr.yaml@v56.0.0
     with:
       track: 8
       path-to-snap-project-directory: ${{ matrix.snap.path }}
@@ -73,5 +76,5 @@ jobs:
     secrets:
       snap-store-token: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: read
+    cache-mode: none

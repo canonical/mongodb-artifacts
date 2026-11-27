@@ -13,9 +13,13 @@ env:
 jobs:
   discover-rocks:
     uses: ./.github/workflows/rocks-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   discover-snaps:
     uses: ./.github/workflows/snaps-discover.yaml
+    permissions: {}
+    cache-mode: none
 
   # 1. Record the revision currently live on the store for the given branch
   snapshot-current-snap-revisions:
@@ -38,6 +42,8 @@ jobs:
 
       - id: current-revisions
         run: .github/scripts/snapshot-current-snap-revisions.sh
+    permissions: {}
+    cache-mode: none
 
   # 2. Build and publish the snaps to a branch
   publish-pr-snaps:
@@ -47,8 +53,8 @@ jobs:
     secrets:
       SNAP_STORE_TOKEN_EDGE: ${{ secrets.SNAP_STORE_TOKEN_EDGE }}
     permissions:
-      actions: read
       contents: read
+    cache-mode: none
 
   # 3. Wait until the new revisions are available
   wait-for-snap-revision:
@@ -69,6 +75,8 @@ jobs:
 
       - name: Poll store until newer revisions appear
         run: .github/scripts/wait-for-snap-revisions.sh
+    permissions: {}
+    cache-mode: none
 
   # 4. Build the rock using the snap in the branch and test it
   test-pr-rocks:
@@ -78,6 +86,6 @@ jobs:
     with:
       snap-channel: 8/edge/pr-${{ github.event.pull_request.number }}
     permissions:
-      actions: read
       contents: read
       security-events: write
+    cache-mode: none
